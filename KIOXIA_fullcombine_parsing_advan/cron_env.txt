@@ -1,0 +1,12 @@
+LANG=en_US.UTF-8
+MAIL=/var/mail/root
+TERM=unknown
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+LOGNAME=root
+USER=root
+HOME=/root
+SHELL=/bin/bash
+SUDO_COMMAND=/home/testit/ETC/PythonEnv/01_Python312/bin/python3.12 /home/testit/SRC/SRC/src/ATV_DEV/TEST/TEST_Move_Reel_ID_file/move_reel_id_csv.py
+SUDO_USER=root
+SUDO_UID=0
+SUDO_GID=0
