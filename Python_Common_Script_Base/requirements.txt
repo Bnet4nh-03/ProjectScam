@@ -1,3 +1,5 @@
 requests
 cryptography
 httpx
+requests
+openpyxl

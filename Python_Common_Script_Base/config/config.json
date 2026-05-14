@@ -10,6 +10,7 @@
             "api_link_2": "http://10.201.12.31:8004"
         },
         "EXCEL_UPDATE": {
+            "database": "TestDB",
             "table_name": "Hw_Board",
             "key_columns": ["Barcode"],
             "header_mapping": {
@@ -24,6 +25,7 @@
             }
 
         },
-        "INPUT_FILE": "C:\\Users\\702373\\Downloads\\ListBIB.xlsx"
+
+        "INPUT_FILE": {"path": "E:\\Downloads\\ListBIB.xlsx"}
     }
 }
