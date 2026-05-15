@@ -64,6 +64,7 @@ class EnCoApiClientAsync:
         """Calls the encrypted stored procedure endpoint."""
         endpoint = "/Common/Data_Method/DB_EnCo/Call_SP"
         payload = {"dbKey": db_key, "spName": sp_name, "spQuery": sp_query, "logSave": log_save}
+
         return await self._call_api(endpoint, payload)
 
     async def call_sc(self, sc_query: str, db_key: str = "CIMitar", log_save: bool = False) -> dict:

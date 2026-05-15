@@ -4,7 +4,6 @@ import openpyxl
 class ExcelUpdateProcessor:
     def __init__(self, config, logger):
         self.logger = logger
-        self.database = config["database"]
         self.table_name = config["table_name"]
         self.mapping = config["header_mapping"]
         self.key_headers = set(config["key_columns"])
@@ -74,7 +73,6 @@ class ExcelUpdateProcessor:
                 continue
 
             payloads.append({
-                "database": self.database,
                 "table": self.table_name,
                 "keys": keys,
                 "data": update_fields

@@ -1,5 +1,7 @@
 requests
 cryptography
 httpx
-requests
 openpyxl
+pandas
+rapidfuzz
+pyodbc
