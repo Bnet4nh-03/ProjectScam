@@ -12,8 +12,8 @@
         "EXCEL_UPDATE": {
             "stored_update": "TestDB..USP_DynamicUpdateData",
             "stored_getHeader": "TestDB..USP_Dynamic_GetHeaderTable",
-            "table_name": "Hw_Board",
-            "key_columns": ["Barcode"],
+            "table_name": "",
+            "key_columns": [""],
             "header_mapping": {
             }
 

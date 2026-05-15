@@ -5,7 +5,7 @@ class ExcelUpdateProcessor:
     def __init__(self, config, logger):
         self.logger = logger
         self.table_name = config["table_name"]
-        self.mapping = config["header_mapping"]
+        self.mapping = {k: v for k, v in config["header_mapping"].items() if v}
         self.key_headers = set(config["key_columns"])
 
     def _is_colored(self, cell):
