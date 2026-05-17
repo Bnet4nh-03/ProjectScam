@@ -3,6 +3,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext
 import tkinter.ttk as ttk
 import json
+import threading
 import openpyxl
 
 from src.apps.module_base import ModuleBase
@@ -109,20 +110,29 @@ class MappingModule(ModuleBase):
 
         tk.Label(self.mapping_container, text="Excel Header", bg="#f4f6f8", font=(None, 10, "bold")).grid(row=0, column=0, sticky="w", padx=4, pady=4)
         tk.Label(self.mapping_container, text="DB Column", bg="#f4f6f8", font=(None, 10, "bold")).grid(row=0, column=1, sticky="w", padx=4, pady=4)
+        tk.Label(self.mapping_container, text="Score", bg="#f4f6f8", font=(None, 10, "bold")).grid(row=0, column=2, sticky="w", padx=4, pady=4)
 
         self.db_columns = self.db_columns or []
         db_options = [""] + self.db_columns
         sorted_items = sorted(mapping.items(), key=lambda item: (item[0] not in key_columns, item[0].lower()))
         for row, (excel_col, db_col) in enumerate(sorted_items, start=1):
             score = scores.get(excel_col, 0.0)
+            score_text = f"{score:.3f}" if score else ""
+            row_bg = "#fff3cd" if score and score < 0.7 else "#f4f6f8"
 
             tk.Label(self.mapping_container, text=excel_col, bg="#f4f6f8", anchor="w").grid(row=row, column=0, sticky="w", padx=4, pady=2)
             combobox = ttk.Combobox(self.mapping_container, values=db_options, width=42, state="readonly")
             combobox.set(db_col or "")
             combobox.grid(row=row, column=1, sticky="w", padx=4, pady=2)
 
-            if score < 0.85 and db_col:
-                combobox.config(background="#fff3cd")
+            score_label = tk.Label(self.mapping_container, text=score_text, bg=row_bg, anchor="w")
+            score_label.grid(row=row, column=2, sticky="w", padx=4, pady=2)
+
+            if score and score < 0.7 and db_col:
+                try:
+                    combobox.config(background="#fff3cd")
+                except Exception:
+                    pass
 
             self.mapping_entries[excel_col] = combobox
 
@@ -184,74 +194,31 @@ class MappingModule(ModuleBase):
         review_headers
     ):
 
-        # =====================================================
-        # Validate file path
-        # =====================================================
         if not self.file_path:
             return []
 
-        # =====================================================
-        # Load workbook
-        # =====================================================
-        workbook = openpyxl.load_workbook(
-            self.file_path
-        )
-
+        workbook = openpyxl.load_workbook(self.file_path)
         worksheet = workbook.active
 
-        # =====================================================
-        # Excel Header -> DB Column
-        # final_mapping:
-        # {
-        #     "Customer": "customer_name",
-        #     "Board No": "boardno"
-        # }
-        # =====================================================
         header_mapping = {
-
-            excel_header: db_col
-
-            for excel_header, db_col
-            in final_mapping.items()
-
+            str(excel_header).strip().lower(): str(db_col).strip()
+            for excel_header, db_col in final_mapping.items()
             if db_col
         }
 
-        # =====================================================
-        # Column Index -> DB Column
-        #
-        # Example:
-        # {
-        #     1: "barcode",
-        #     2: "boardno"
-        # }
-        # =====================================================
         header_to_index = {}
+        for col_idx, cell in enumerate(worksheet[1], start=1):
+            header = str(cell.value).strip() if cell.value is not None else ""
+            normalized_header = header.lower()
+            if normalized_header in header_mapping:
+                header_to_index[col_idx] = header_mapping[normalized_header]
 
-        for col_idx, cell in enumerate(
-            worksheet[1],
-            start=1
-        ):
-
-            header = cell.value
-
-            if header in header_mapping:
-
-                header_to_index[col_idx] = (
-                    header_mapping[header]
-                )
-
-        # =====================================================
-        # Config
-        # =====================================================
         payloads = []
 
+        # normalize key headers to lowercase for robust comparison
         key_headers = set(
-            self.app.config[
-                "EXCEL_UPDATE"
-            ][
-                "key_columns"
-            ]
+            c.strip().lower()
+            for c in self.app.config["EXCEL_UPDATE"]["key_columns"]
         )
 
         table_name = (
@@ -270,104 +237,39 @@ class MappingModule(ModuleBase):
             )
         )
 
-        # =====================================================
-        # Read Excel Rows
-        # =====================================================
-        for row_idx, row in enumerate(
-            worksheet.iter_rows(min_row=2),
-            start=2
-        ):
-
+        for row_idx, row in enumerate(worksheet.iter_rows(min_row=2), start=2):
             keys = {}
-
             data = {}
 
-            # =================================================
-            # Read each cell
-            # =================================================
-            for col_idx, cell in enumerate(
-                row,
-                start=1
-            ):
-
-                db_col = header_to_index.get(
-                    col_idx
-                )
-
-                # ---------------------------------------------
-                # Column not mapped
-                # ---------------------------------------------
+            for col_idx, cell in enumerate(row, start=1):
+                db_col = header_to_index.get(col_idx)
                 if not db_col:
                     continue
 
                 value = cell.value
-
-                # ---------------------------------------------
-                # Key columns
-                # ---------------------------------------------
-                if db_col in key_headers:
-
+                if db_col and str(db_col).strip().lower() in key_headers:
                     if value is not None:
-
                         keys[db_col] = value
-
                     continue
 
-                # ---------------------------------------------
-                # Only review headers
-                # ---------------------------------------------
                 if db_col not in review_headers:
                     continue
 
                 data[db_col] = value
 
-            # =================================================
-            # Skip empty update
-            # =================================================
             if not data:
                 continue
-
-            # =================================================
-            # Missing keys
-            # =================================================
             if len(keys) != len(key_headers):
                 continue
 
-            # =================================================
-            # Build payload object
-            # =================================================
             payload = {
-
                 "table": table_name,
-
                 "keys": keys,
-
-                "data": data
+                "data": data,
             }
-
-            # =================================================
-            # Optional database
-            # =================================================
             if database_name:
-
-                payload["database"] = (
-                    database_name
-                )
-
-            # =================================================
-            # Append to bulk payload list
-            # =================================================
+                payload["database"] = database_name
             payloads.append(payload)
-
-        # =====================================================
-        # Return:
-        #
-        # [
-        #     {...},
-        #     {...},
-        #     {...}
-        # ]
-        # =====================================================
         return payloads
 
     def show_review_window(self, final_mapping):
@@ -384,13 +286,14 @@ class MappingModule(ModuleBase):
         review_window = tk.Toplevel(self.frame)
         review_window.title("Review dữ liệu trước khi Submit")
         review_window.geometry("1000x550")
+        review_window.configure(bg="#f4f6f8")
         review_window.transient(self.frame.winfo_toplevel())
         review_window.grab_set()
 
-        info_label = tk.Label(review_window, text="Data.", anchor="w")
+        info_label = tk.Label(review_window, text="Data.", anchor="w", bg="#f4f6f8")
         info_label.pack(fill="x", padx=10, pady=6)
 
-        search_frame = tk.Frame(review_window)
+        search_frame = tk.Frame(review_window, bg="#f4f6f8")
         search_frame.pack(fill="x", padx=10, pady=(0, 6))
 
         tk.Label(search_frame, text="Tìm kiếm:", width=10, anchor="w").pack(side="left")
@@ -398,17 +301,8 @@ class MappingModule(ModuleBase):
         search_entry = tk.Entry(search_frame, textvariable=search_var, width=40)
         search_entry.pack(side="left", padx=(0, 8))
 
-        def filter_rows():
-            query = search_var.get().strip().lower()
-            tree.delete(*tree.get_children())
-            for index, record in enumerate(rows, start=1):
-                line = " ".join([str(record.get(col, "") or "").lower() for col in review_headers])
-                if not query or query in line:
-                    values = [index] + [record.get(col, "") for col in review_headers]
-                    tree.insert("", "end", values=values)
-
-        tk.Button(search_frame, text="Search", width=10, command=filter_rows).pack(side="left")
-        tk.Button(search_frame, text="Clear", width=10, command=lambda: (search_var.set(""), filter_rows())).pack(side="left", padx=(8, 0))
+        tk.Button(search_frame, text="Search", width=10, command=lambda: chunked_filter_rows()).pack(side="left")
+        tk.Button(search_frame, text="Clear", width=10, command=lambda: (search_var.set(""), chunked_filter_rows())).pack(side="left", padx=(8, 0))
 
         container = tk.Frame(review_window)
         container.pack(fill="both", expand=True, padx=10, pady=6)
@@ -427,49 +321,148 @@ class MappingModule(ModuleBase):
 
         for col in columns:
             tree.heading(col, text=col)
-            tree.column(col, width=150, anchor="w")
+            tree.column(col, width=80 if col == "No" else 150, anchor="w")
 
         def on_mouse_wheel(event):
             tree.yview_scroll(int(-1*(event.delta/120)), "units")
 
         tree.bind("<MouseWheel>", on_mouse_wheel)
 
-        filter_rows()
+        # use chunked insertion to keep UI responsive
+        def chunked_filter_rows():
+            query = search_var.get().strip().lower()
+            tree.delete(*tree.get_children())
+            filtered = []
+            for index, record in enumerate(rows, start=1):
+                line = " ".join([str(record.get(col, "") or "").lower() for col in review_headers])
+                if not query or query in line:
+                    filtered.append((index, [record.get(col, "") for col in review_headers]))
 
-        self.review_payloads = self._build_review_payloads(final_mapping, review_headers)
+            batch_size = 100
 
-        
-        self._log(f"Loading model: {self.review_payloads}")
-    
+            def insert_batch(start=0):
+                end = min(start + batch_size, len(filtered))
+                for i in range(start, end):
+                    idx, vals = filtered[i]
+                    tree.insert("", "end", values=[idx] + vals)
+                if end < len(filtered):
+                    review_window.after(10, lambda: insert_batch(end))
 
-        button_frame = tk.Frame(review_window)
+            insert_batch(0)
+
+        # create button frame early so we can control submit button state
+        button_frame = tk.Frame(review_window, bg="#f4f6f8")
         button_frame.pack(fill="x", padx=10, pady=8)
 
-        tk.Button(button_frame, text="Hủy", width=12, command=review_window.destroy).pack(side="left")
-        tk.Button(button_frame, text="Submit", width=12, command=lambda: self.final_submit(final_mapping, review_window, self.review_payloads)).pack(side="right")
+        cancel_btn = tk.Button(button_frame, text="Hủy", width=12, command=review_window.destroy)
+        cancel_btn.pack(side="left")
 
-    def final_submit(self, final_mapping, review_window=None, payloads=None):
+        submit_btn = tk.Button(button_frame, text="Submit", width=12, state="disabled")
+        submit_btn.pack(side="right")
+
+        # status label for payload building
+        status_var = tk.StringVar(value="Preparing payloads...")
+        status_label = tk.Label(review_window, textvariable=status_var, bg="#f4f6f8")
+        status_label.pack(fill="x", padx=10)
+
+        # start inserting visible rows (chunked)
+        chunked_filter_rows()
+
+        # build payloads in background so UI doesn't hang
+        def build_payloads_bg():
+            try:
+                payloads = self._build_review_payloads(final_mapping, review_headers)
+                def on_done():
+                    self.review_payloads = payloads
+                    status_var.set(f"Payloads ready: {len(payloads)} items")
+                    submit_btn.config(state="normal")
+                    self._log(f"Review payloads built: {len(payloads)} items")
+                review_window.after(0, on_done)
+            except Exception as exc:
+                review_window.after(0, lambda: status_var.set(f"Error building payloads: {exc}"))
+
+        threading.Thread(target=build_payloads_bg, daemon=True).start()
+
+        # wire submit to background send using the prebuilt payloads
+        def on_submit():
+            submit_btn.config(state="disabled")
+            status_var.set("Sending payloads...")
+
+            def on_complete_cb():
+                try:
+                    status_var.set("Send complete")
+                except Exception:
+                    pass
+
+            # call final_submit which runs work in background and will call on_complete when done
+            try:
+                self.final_submit(final_mapping, review_window, self.review_payloads, on_complete=on_complete_cb)
+            except Exception as exc:
+                status_var.set(f"Send error: {exc}")
+
+        submit_btn.config(command=on_submit)
+
+    def final_submit(self, final_mapping, review_window=None, payloads=None, on_complete=None):
         excel_conf = self.app.config["EXCEL_UPDATE"]
         excel_conf["header_mapping"] = final_mapping
+        # perform processing and API call in background to avoid blocking UI
+        # `on_complete` is an optional callable invoked on the main thread when send finishes
+        def send_thread(on_complete=None):
+            try:
+                local_payloads = payloads
+                if local_payloads is None:
+                    processor = ExcelUpdateProcessor(excel_conf, self.app.logger)
+                    local_payloads = processor.process_file(self.file_path)
 
-        try:
-            if payloads is None:
-                processor = ExcelUpdateProcessor(excel_conf, self.app.logger)
-                payloads = processor.process_file(self.file_path)
+                if not local_payloads:
+                    def warn_no_data():
+                        messagebox.showwarning("Chú ý", "Không có dữ liệu nào để gửi. Vui lòng kiểm tra màu cell và key columns.")
+                    if review_window:
+                        review_window.after(0, warn_no_data)
+                    else:
+                        warn_no_data()
+                    return
 
-            if not payloads:
-                messagebox.showwarning("Chú ý", "Không có dữ liệu nào để gửi. Vui lòng kiểm tra màu cell và key columns.")
-                return
+                sp_query_str = json.dumps(local_payloads)
+                # result = self.app.enco_api_client.call_sp(excel_conf["stored_update"], {"@p_payload": sp_query_str})
+                # self._log(f"✅ SP RESULT: {result}")
 
-            sp_query_str = json.dumps(payloads)
-            result = self.app.enco_api_client.call_sp(excel_conf["stored_update"], {"@p_payload": sp_query_str})
-            self._log(f"✅ SP RESULT: {result}")
-            messagebox.showinfo("Hoàn thành", "Stored procedure đã được gọi thành công.")
-            if review_window:
-                review_window.destroy()
-        except Exception as exc:
-            self._log(f"❌ SUBMIT ERROR: {exc}")
-            messagebox.showerror("Lỗi", f"Không thể gửi dữ liệu: {exc}")
+                def on_success():
+                    messagebox.showinfo("Hoàn thành", "Stored procedure đã được gọi thành công.")
+                    if review_window:
+                        review_window.destroy()
+                    if on_complete:
+                        try:
+                            if review_window:
+                                review_window.after(0, on_complete)
+                            else:
+                                on_complete()
+                        except Exception:
+                            pass
+
+                if review_window:
+                    review_window.after(0, on_success)
+                else:
+                    on_success()
+
+            except Exception as exc:
+                self._log(f"❌ SUBMIT ERROR: {exc}")
+                def on_error():
+                    messagebox.showerror("Lỗi", f"Không thể gửi dữ liệu: {exc}")
+                    if on_complete:
+                        try:
+                            if review_window:
+                                review_window.after(0, on_complete)
+                            else:
+                                on_complete()
+                        except Exception:
+                            pass
+                if review_window:
+                    review_window.after(0, on_error)
+                else:
+                    on_error()
+
+        threading.Thread(target=send_thread, args=(on_complete,), daemon=True).start()
 
     def run_module(self, file_path, table_name, key_columns):
         try:
@@ -525,16 +518,27 @@ class MappingModule(ModuleBase):
         final_mapping = {}
         for excel_col, entry in self.mapping_entries.items():
             value = entry.get().strip()
-            if value or excel_col in self.app.config["EXCEL_UPDATE"]["key_columns"]:
+            if value:
                 final_mapping[excel_col] = value
 
         if not final_mapping:
             messagebox.showerror("Lỗi", "Mapping không hợp lệ")
             return
 
+        # normalize key columns and final mapping values for case-insensitive comparison
+        key_columns = set(c.strip().lower() for c in self.app.config["EXCEL_UPDATE"]["key_columns"])
+        final_targets_lower = set(v.strip().lower() for v in final_mapping.values())
+        missing_keys = [col for col in key_columns if col not in final_targets_lower]
+        if missing_keys:
+            messagebox.showerror(
+                "Lỗi",
+                f"Vui lòng mapping đầy đủ key columns: {', '.join(missing_keys)}"
+            )
+            return
+
         self._log("=== FINAL MAPPING ===")
         for source, target in final_mapping.items():
-            self._log(f"{source} → {target or '<empty>'}")
+            self._log(f"{source} → {target}")
 
         excel_conf = self.app.config["EXCEL_UPDATE"]
         excel_conf["header_mapping"] = final_mapping
