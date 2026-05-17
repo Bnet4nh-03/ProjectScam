@@ -1,3 +1,5 @@
+import os
+from pathlib import Path
 import openpyxl
 
 
@@ -7,6 +9,7 @@ class ExcelUpdateProcessor:
         self.table_name = config["table_name"]
         self.mapping = {k: v for k, v in config["header_mapping"].items() if v}
         self.key_headers = set(config["key_columns"])
+        self.update_headers = set(config.get("update_headers", []))
 
     def _is_colored(self, cell):
         fill = cell.fill
@@ -21,7 +24,23 @@ class ExcelUpdateProcessor:
         return True
 
     def process_file(self, file_path):
-        wb = openpyxl.load_workbook(file_path)
+        if isinstance(file_path, (list, tuple)):
+            file_path = file_path[0]
+
+        if not isinstance(file_path, (str, bytes, os.PathLike)):
+            raise TypeError("file_path must be a string or path-like object")
+
+        file_path = Path(str(file_path).strip())
+        allowed = (".xlsx", ".xlsm", ".xltx", ".xltm")
+
+        if file_path.suffix and file_path.suffix.lower() not in allowed:
+            raise ValueError("Unsupported file format. Please use .xlsx, .xlsm, .xltx, or .xltm")
+
+        try:
+            wb = openpyxl.load_workbook(file_path)
+        except Exception as e:
+            raise ValueError(f"Cannot open Excel file {file_path!r}: {e}")
+
         ws = wb.active
 
         # map header
@@ -57,8 +76,11 @@ class ExcelUpdateProcessor:
                         keys[db_column] = value
                     continue
 
-                # ✅ 2. NON-KEY → check màu
-                if not self._is_colored(cell):
+                # ✅ 2. NON-KEY → update nếu header được đánh dấu
+                if self.update_headers:
+                    if excel_header not in self.update_headers:
+                        continue
+                elif not self._is_colored(cell):
                     continue
 
                 update_fields[db_column] = value

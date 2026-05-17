@@ -1,149 +1,197 @@
 import re
 import logging
-from rapidfuzz import fuzz
+from pathlib import Path
+from typing import List, Dict, Any, Optional
+
+import numpy as np
 from openpyxl import load_workbook
+from scipy.optimize import linear_sum_assignment
+from sklearn.metrics.pairwise import cosine_similarity
+from sentence_transformers import SentenceTransformer
 
 logging.basicConfig(level=logging.INFO)
 
 
-class ExcelDBMapper:
-    def __init__(self, db_columns):
-        self.db_columns = db_columns
-        self.db_norm = {col: self._normalize(col) for col in db_columns}
+def _normalize_text(text: Any) -> str:
+    s = str(text or "").lower()
+    return re.sub(r'[^a-z0-9]', '', s)
 
-    def _normalize(self, text):
-        text = str(text or "").lower()
-        return re.sub(r'[^a-z0-9]', '', text)
 
-    def _tokens(self, text):
-        return [token for token in re.split(r'[\s_]+', str(text).lower()) if token]
+def _preprocess_for_embedding(text: Any) -> str:
+    s = str(text or "").lower()
+    s = re.sub(r'[_\-\.]', ' ', s)
+    s = re.sub(r'[^a-z0-9\s]', '', s)
+    return re.sub(r'\s+', ' ', s).strip()
 
-    def _token_score(self, a, b):
-        a_set = set(self._tokens(a))
-        b_set = set(self._tokens(b))
-        return len(a_set & b_set) / max(len(a_set | b_set), 1)
 
-    def _ngram(self, text, n=3):
-        text = str(text)
-        return [text[i:i+n] for i in range(len(text) - n + 1)] if len(text) >= n else [text]
+class ExcelHeaderExtractor:
+    """Extracts headers from an Excel file and detects colored headers for update."""
 
-    def _ngram_score(self, a, b):
-        a_set = set(self._ngram(a))
-        b_set = set(self._ngram(b))
-        return len(a_set & b_set) / max(len(b_set), 1)
+    ALLOWED_EXT = {'.xlsx', '.xlsm', '.xltx', '.xltm'}
 
-    def _fuzzy_score(self, a, b):
-        return fuzz.partial_ratio(self._normalize(a), self._normalize(b)) / 100
+    def get_excel_headers_with_color(self, file_path: Path) -> Dict[str, List[str]]:
+        if isinstance(file_path, (list, tuple)):
+            file_path = file_path[0]
 
-    def _score(self, excel_col, db_col):
-        token = self._token_score(excel_col, db_col)
-        ngram = self._ngram_score(excel_col, db_col)
-        fuzzy_score = self._fuzzy_score(excel_col, db_col)
-        return 0.45 * token + 0.35 * ngram + 0.20 * fuzzy_score
+        file_path = Path(str(file_path))
+        if file_path.suffix.lower() not in self.ALLOWED_EXT:
+            raise ValueError(f"Unsupported Excel format: {file_path.suffix}")
 
-    def _find_exact(self, excel_col, candidates):
-        normalized = self._normalize(excel_col)
-        for db_col in candidates:
-            if normalized == self.db_norm.get(db_col):
-                return db_col
+        wb = load_workbook(file_path)
+        ws = wb.active
+
+        headers: List[str] = []
+        colored: List[str] = []
+
+        for col in ws.iter_cols(min_row=1, max_row=1):
+            cell = col[0]
+            h = str(cell.value).strip() if cell.value is not None else ""
+            headers.append(h)
+
+            fill = getattr(cell, 'fill', None)
+            start = getattr(fill, 'start_color', None)
+            if start is not None:
+                idx = getattr(start, 'index', None)
+                if idx and idx not in ("00000000", "FFFFFFFF"):
+                    colored.append(h)
+
+        wb.close()
+        return {"all_headers": headers, "update_headers": colored}
+
+
+class HeaderMappingBuilder:
+    """Builds header mapping between Excel headers and DB columns using embeddings.
+
+    Responsibilities:
+    - exact match for keys
+    - semantic similarity for remaining headers
+    - confidence assignment and manual-review queue
+    """
+
+    def __init__(self, db_columns: List[str], embedding_model: str = "all-MiniLM-L6-v2"):
+        self.db_columns = list(db_columns)
+        self.db_norm = {c: _normalize_text(c) for c in self.db_columns}
+
+        logging.info(f"Loading embedding model: {embedding_model}")
+        self.model = SentenceTransformer(embedding_model)
+        self.db_embeddings = self.model.encode([
+            _preprocess_for_embedding(c) for c in self.db_columns
+        ], convert_to_numpy=True, normalize_embeddings=True)
+
+    def find_exact(self, excel_col: str, candidates: List[str]) -> Optional[str]:
+        norm = _normalize_text(excel_col)
+        for c in candidates:
+            if self.db_norm.get(c) == norm:
+                return c
         return None
 
-    def get_excel_headers_with_color(self, file_path):
-        workbook = load_workbook(file_path)
-        worksheet = workbook.active
+    def embedding_similarity_matrix(self, excel_headers: List[str], db_subset: List[str]) -> np.ndarray:
+        if not excel_headers or not db_subset:
+            return np.array([])
 
-        headers = []
-        colored_headers = []
+        excel_emb = self.model.encode([
+            _preprocess_for_embedding(h) for h in excel_headers
+        ], convert_to_numpy=True, normalize_embeddings=True)
 
-        for col in worksheet.iter_cols(min_row=1, max_row=1):
-            cell = col[0]
-            header = str(cell.value).strip() if cell.value else ""
-            headers.append(header)
+        db_idx = [self.db_columns.index(c) for c in db_subset]
+        db_emb = self.db_embeddings[db_idx]
 
-            fill = cell.fill
-            color = fill.start_color
-            if color and color.index not in ("00000000", "FFFFFFFF"):
-                colored_headers.append(header)
+        return cosine_similarity(excel_emb, db_emb)
 
-        return {
-            "all_headers": headers,
-            "update_headers": colored_headers,
-        }
+    def build_matrix_and_assign(self, excel_headers: List[str], db_subset: List[str]) -> List[Dict[str, Any]]:
+        if not excel_headers or not db_subset:
+            return []
 
-    def map(self, excel_headers, key_columns=None):
+        sim = self.embedding_similarity_matrix(excel_headers, db_subset)
+        cost = 1 - sim
+        row_idx, col_idx = linear_sum_assignment(cost)
+
+        out: List[Dict[str, Any]] = []
+        for r, c in zip(row_idx, col_idx):
+            score = float(sim[r][c])
+            if score >= 0.85:
+                conf = 'HIGH'
+            elif score >= 0.70:
+                conf = 'MED'
+            else:
+                conf = 'LOW'
+
+            out.append({
+                'excel_column': excel_headers[r],
+                'db_column': db_subset[c],
+                'score': round(score, 4),
+                'confidence': conf
+            })
+
+        return out
+
+    def build_config(self, excel_headers: List[str], key_columns: List[str]) -> Dict[str, Any]:
         key_columns = key_columns or []
-        mapped = {}
-        scores = {}
-        ambiguous = []
-        unmapped = []
+        header_mapping: Dict[str, str] = {}
+        scores: Dict[str, float] = {}
+        confidence: Dict[str, str] = {}
+        needs_review: List[str] = []
         used_db = set()
 
-        for key in key_columns:
-            match = self._find_exact(key, self.db_columns)
-            if not match:
-                raise Exception(f"Key column '{key}' không tồn tại trong DB")
-            mapped[key] = match
-            scores[key] = 1.0
-            used_db.add(match)
-
-        for excel_col in excel_headers:
-            if not excel_col or excel_col in mapped:
-                continue
-
-            candidates = [col for col in self.db_columns if col not in used_db]
-            if not candidates:
-                mapped[excel_col] = ""
-                scores[excel_col] = 0.0
-                unmapped.append((excel_col, 0.0))
-                continue
-
-            exact_match = self._find_exact(excel_col, candidates)
-            if exact_match:
-                mapped[excel_col] = exact_match
-                scores[excel_col] = 1.0
-                used_db.add(exact_match)
-                continue
-
-            best_col = None
-            best_score = 0.0
-            for db_col in candidates:
-                score = self._score(excel_col, db_col)
-                if score > best_score:
-                    best_score = score
-                    best_col = db_col
-
-            if best_score >= 0.85:
-                mapped[excel_col] = best_col
-                scores[excel_col] = round(best_score, 3)
-                used_db.add(best_col)
-            elif best_score >= 0.70:
-                mapped[excel_col] = best_col or ""
-                scores[excel_col] = round(best_score, 3)
-                used_db.add(best_col)
-                ambiguous.append((excel_col, best_col, round(best_score, 3)))
+        # Exact match for keys
+        for k in key_columns:
+            match = self.find_exact(k, self.db_columns)
+            if match:
+                header_mapping[k] = match
+                scores[k] = 1.0
+                confidence[k] = 'HIGH'
+                used_db.add(match)
             else:
-                mapped[excel_col] = ""
-                scores[excel_col] = round(best_score, 3)
-                unmapped.append((excel_col, round(best_score, 3)))
+                logging.warning(f"Key column '{k}' not found in DB columns")
+
+        remaining_excel = [h for h in excel_headers if h not in header_mapping]
+        remaining_db = [d for d in self.db_columns if d not in used_db]
+
+        assignments = self.build_matrix_and_assign(remaining_excel, remaining_db)
+        for item in assignments:
+            excel_col = item['excel_column']
+            db_col = item['db_column']
+            header_mapping[excel_col] = db_col
+            scores[excel_col] = item['score']
+            confidence[excel_col] = item['confidence']
+            if item['confidence'] in ('MED', 'LOW'):
+                needs_review.append(excel_col)
+
+        # Ensure all headers present
+        for h in excel_headers:
+            if h not in header_mapping:
+                header_mapping[h] = ''
+                scores[h] = 0.0
+                confidence[h] = 'LOW'
+                needs_review.append(h)
 
         return {
-            "mapped": mapped,
-            "scores": scores,
-            "ambiguous": ambiguous,
-            "unmapped": unmapped,
+            'key_columns': key_columns,
+            'header_mapping': header_mapping,
+            'scores': scores,
+            'confidence': confidence,
+            'needs_review': needs_review
         }
 
-    def build_config(self, file_path, key_columns):
-        excel_info = self.get_excel_headers_with_color(file_path)
-        headers_for_mapping = list(set(excel_info["update_headers"] + key_columns))
-        result = self.map(headers_for_mapping, key_columns)
-        if result["ambiguous"]:
-            raise Exception(f"Ambiguous mapping: {result['ambiguous']}")
 
-        config = {
-            "key_columns": key_columns,
-            "header_mapping": result["mapped"],
-        }
-        logging.info(f"Mapping success: {len(result['mapped'])}")
-        logging.info(f"Unmapped: {result['unmapped']}")
-        return config
+class ExcelDBMapper:
+    """Facade that combines header extraction and mapping builder.
+
+    Public methods:
+    - get_excel_headers_with_color(file_path)
+    - map(file_path, key_columns)
+    """
+
+    def __init__(self, db_columns: List[str], embedding_model: str = "all-MiniLM-L6-v2"):
+        self.db_columns = list(db_columns)
+        self.extractor = ExcelHeaderExtractor()
+        self.builder = HeaderMappingBuilder(self.db_columns, embedding_model)
+
+    def get_excel_headers_with_color(self, file_path: Path) -> Dict[str, List[str]]:
+        return self.extractor.get_excel_headers_with_color(file_path)
+
+    def map(self, file_path: Path, key_columns: Optional[List[str]] = None) -> Dict[str, Any]:
+        key_columns = key_columns or []
+        excel_info = self.extractor.get_excel_headers_with_color(file_path)
+        excel_headers = list(set(excel_info.get('update_headers', []) + key_columns))
+        return self.builder.build_config(excel_headers, key_columns)

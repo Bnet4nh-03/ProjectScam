@@ -5,3 +5,6 @@ openpyxl
 pandas
 rapidfuzz
 pyodbc
+scipy
+scikit-learn
+sentence_transformers
