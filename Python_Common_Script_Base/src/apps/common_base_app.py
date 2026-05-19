@@ -4,6 +4,7 @@ from tkinter import ttk
 from src.core.base_app import BaseApp
 from src.utility.enco_common_api_utils.enco_api_client import EnCoApiClient
 from src.modules.updateData.mapping_module import MappingModule
+from src.modules.add_account.add_account_module import AddAccountModule
 
 
 class CommonBaseApp(BaseApp):
@@ -26,6 +27,7 @@ class CommonBaseApp(BaseApp):
 
         # register modules here
         self._register_module(MappingModule)
+        self._register_module(AddAccountModule)
 
     def _register_module(self, module_cls):
         frame = tk.Frame(self.notebook, bg="#f4f6f8")
