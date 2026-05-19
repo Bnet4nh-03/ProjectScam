@@ -1,0 +1,589 @@
+FUNC_CHECK_RCD
+
+global widget
+
+global g_hostname
+global g_lotname
+global g_dcc
+global g_operation
+global g_operatorid
+global g_customer
+global g_job
+
+set qry "SCOPS,CALLSP2,CheckQorvoRCD,CHECK,$g_hostname,$g_lotname,$g_dcc,$g_operation,$g_operatorid,$g_customer,$g_job,,0*"
+
+set res ""
+set res [FUNC_SEND_QRY $qry]
+
+if { [lindex [split $res ","] 0] == "FAIL" || $res == "" } {
+    set choice [ tk_messageBox -title "QORVO RCD CHECK ERROR" -icon warning -message [FM "TESTIT" "" $res] ]
+    return "FALSE"
+}
+
+if { [lindex [split $res ","] 0] == "NO" } {
+    return "TRUE"
+}
+
+set rcd_path [lindex [split $res ","] 0]
+
+set total_count ""
+set total_count [lindex [split $res ","] 2]
+set now_count ""
+set extension ""
+set extension [lindex [split $res ","] 1]
+set file_exist "Yes"
+
+### RCD Path Check ###
+for {set i 0} {$i < $total_count} {incr i} {
+    set now_count $i
+    set file_exist "Yes"
+    
+    if { [file exist $rcd_path] == 1 } {
+        if {$i == $total_count - 1} {
+            if [catch {
+                set gt1_list [glob -directory $rcd_path $extension]
+            } err] {
+                set win_title_file "qorvo_rcd_file_check_warning"
+                FUNC_DISPLAY_MESSAGE "close" "$win_title_file" "" ""
+                set config_file "$win_title_file"           
+    
+                FUNC_DISPLAY_MESSAGE "open" $config_file "image,scops_warning_program.gif" [FM "K3 Engineer" "Qorvo RCD Path, There is no RCD File!" ""]
+                set choice [ tk_messageBox -title "QORVO RCD FILE CHECK ERROR" -icon error -message [FM "K3 Engineer" "Qorvo RCD File, There is no RCD File!" ""] ]
+                FUNC_DISPLAY_MESSAGE "close" "$win_title_file" "" ""
+                return "FALSE"  
+            }  
+            set file_exist "Yes"  
+        }
+        
+        if [catch {
+                set gt1_list [glob -directory $rcd_path $extension]
+            } err] {
+                set file_exist "No"
+            }   
+        
+        if {$file_exist == "Yes"} {
+            break
+        }                  
+    }
+    
+    if {$i == $total_count - 1} {
+        set win_title_path "qorvo_rcd_path_check_warning"
+        FUNC_DISPLAY_MESSAGE "close" "$win_title_path" "" ""
+        set config_path "$win_title_path"
+    
+        FUNC_DISPLAY_MESSAGE "open" $config_path "image,scops_warning_program.gif" [FM "K3 Engineer" "Qorvo RCD Path, No exist!" ""]
+        set choice [ tk_messageBox -title "QORVO RCD PATH CHECK ERROR" -icon error -message [FM "K3 Engineer" "Qorvo RCD Path, No exist!" $res] ]
+        FUNC_DISPLAY_MESSAGE "close" "$win_title_path" "" ""
+        return "FALSE"  
+    }
+    
+    set now_count [expr $i+1]
+    set qry "SCOPS,CALLSP2,CheckQorvoRCD,CHECK,$g_hostname,$g_lotname,$g_dcc,$g_operation,$g_operatorid,$g_customer,$g_job,,$now_count*"
+    set res [FUNC_SEND_QRY $qry]
+    set rcd_path [lindex [split $res ","] 0]
+    set extension [lindex [split $res ","] 1]
+    
+}
+
+set gt1_list_count [llength $gt1_list]
+    
+if { $gt1_list_count != 1 } {
+    set win_title_files "qorvo_rcd_file_check_warning"
+    FUNC_DISPLAY_MESSAGE "close" "$win_title_files" "" ""
+    set config_files "$win_title_files"
+    
+    FUNC_DISPLAY_MESSAGE "open" $config_files "image,scops_warning_program.gif" [FM "K3 Engineer" "Qorvo RCD Path, There are many RCD Files!" ""]
+    set choice [ tk_messageBox -title "QORVO RCD FILE CHECK ERROR" -icon error -message [FM "K3 Engineer" "Qorvo RCD File, There are many RCD Files!\n\nTotal Count:" $gt1_list_count] ]
+    FUNC_DISPLAY_MESSAGE "close" "$win_title_files" "" ""
+    return "FALSE"  
+        
+}
+
+### validation ###
+
+set qry_val "SCOPS,CALLSP2,CheckQorvoRCD,VALIDATION,$g_hostname,$g_lotname,$g_dcc,$g_operation,$g_operatorid,$g_customer,$g_job,$gt1_list,$now_count*"
+
+set res_val ""
+set res_val [FUNC_SEND_QRY $qry_val]
+    
+if { [lindex [split $res_val ","] 0] == "FAIL" || $res_val == "" } {
+    set choice [ tk_messageBox -title "QORVO RCD CHECK ERROR" -icon warning -message [FM "TESTIT" "" $res_val] ]
+    return "FALSE"
+}
+
+if { [lindex [split $res_val ","] 0] == "YES" } {
+    
+    set msg [lindex [split $res_val ","] 1]
+    
+    set win_title_val "qorvo_rcd_file_validation_warning"
+    FUNC_DISPLAY_MESSAGE "close" "$win_title_val" "" ""
+    set config_val "$win_title_val"
+    
+    FUNC_DISPLAY_MESSAGE "open" $config_val "image,scops_warning_program.gif" [FM "K3 Engineer" "Qorvo RCD Validation False!" ""]
+    set choice [ tk_messageBox -title "QORVO RCD FILE VALIDATION ERROR" -icon error -message [FM "K3 Engineer" $msg ""] ]
+    FUNC_DISPLAY_MESSAGE "close" "$win_title_val" "" ""
+    return "FALSE"  
+    
+}
+
+return "TRUE"
+
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+FUNC_RFID_COMPARE_LOTS
+
+global widget
+
+global g_rfid_flag
+global g_hostname
+
+global g_rfidconformation
+global g_traylot_flag
+global g_reellot_flag
+
+global g_traycheckpopup
+set g_traycheckpopup 0
+global g_reelcheckpopup
+set g_reelcheckpopup 0
+
+set qry "SCOPS,ReadRFID,$g_hostname*"
+
+set res ""
+set res [FUNC_SEND_QRY $qry]
+
+
+if { [lindex [split $res ","] 0] == "FAIL" } {
+    #set choice [ tk_messageBox -title "Read RFID Error" -icon warning -message "$res    "]
+    return "FALSE"
+}
+
+set rfidlotname ""
+set rfidlotname [string toupper [lindex [split $res ","] 0]]
+
+set qry_qorvo "SCOPS,CALLSP2,CheckQorvoLot,$g_hostname,$g_rfidconformation*"
+
+set res_qorvo ""
+set res_qorvo [FUNC_SEND_QRY $qry_qorvo]
+if { [lindex [split $res_qorvo ","] 0] == "YES" } {
+    set g_rfidconformation [lindex [split $res_qorvo ","] 1]
+}
+
+set g_rfidconformation [string toupper $g_rfidconformation]
+
+if { $rfidlotname == "" } {
+     
+    set choice [ tk_messageBox -title "Check RFID Lot Error" -icon warning -message "There's no RFID information!   " ]
+    set g_rfid_flag "FALSE"
+    #FUNC_RFID_INITIALIZE
+} elseif { $rfidlotname != $g_rfidconformation } {
+   
+    set win_title "scops_warning_lot"
+    FUNC_DISPLAY_MESSAGE "close" "$win_title" "" ""
+    FUNC_DISPLAY_MESSAGE "open" "$win_title" "image,scops_warning_lot.gif" "RFID and Input Lot Number are different!"
+   
+    set choice [ tk_messageBox -title "Check RFID Lot Error" -icon warning -message "RFID Lot and Input Lot is different!\n\n-RFID : $rfidlotname\n\n-INPUT : $g_rfidconformation" ]
+    set g_rfid_flag "FALSE"
+    
+    FUNC_DISPLAY_MESSAGE "close" "$win_title" "" ""
+    
+    
+    #FUNC_RFID_INITIALIZE      
+} else {
+
+    set g_rfid_flag "TRUE"
+
+    global g_lotname
+    set g_lotname $rfidlotname
+    
+    FUNC_RFID_INITIALIZE
+    FUNC_RFID_REFRESH
+
+    BTN_SEARCH_LOT ""
+    
+    set g_traycheckpopup 1 
+    set g_traylot_flag 0
+    
+    set g_reelcheckpopup 1
+    set g_reellot_flag 0
+
+}
+
+set g_rfidconformation ""
+Window hide .top85
+
+if { $g_traycheckpopup != 0 } {
+    if { [FUNC_TRAY_LOTCHECK] != "TRUE" } {
+        FD "FUNC_TRAY_LOTCHECK : FALSE"
+        return "FALSE" 
+    }
+}
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+USE [CIMitar_Master]
+GO
+/****** Object:  StoredProcedure [dbo].[USP_Scops_FuncQorvoRCD]    Script Date: 2024-09-09 오전 9:18:41 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+-- =============================================
+-- 작성자: 이선종
+-- 생성일: 2021.06.11
+-- 설명:	SCOPSUI 에서 Qorvo 장비의 RCD 파일명을 이용해 PGM Validation 진행
+-- =============================================
+ALTER PROCEDURE [dbo].[USP_Scops_FuncQorvoRCD]
+    
+    @scops_string as varchar(1024)
+    
+AS
+SET NOCOUNT ON
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
+
+
+declare @flag as varchar(50)
+declare @hostname as varchar(100)
+declare @lotname as varchar(256)
+declare @dcc as varchar(50)
+declare @operation as varchar(50)
+declare @operatorid as varchar(50)
+declare @customer as varchar(100)
+declare @job as varchar(100)
+declare @rcdfile as varchar(MAX)
+declare @count as varchar(50)
+	
+select @flag = data from CIMitar_Master..Func_Split(@scops_string,',') where no = 1
+select @hostname = data from CIMitar_Master..Func_Split(@scops_string,',') where no = 2
+select @lotname = data from CIMitar_Master..Func_Split(@scops_string,',') where no = 3
+select @dcc = data from CIMitar_Master..Func_Split(@scops_string,',') where no = 4
+select @operation = data from CIMitar_Master..Func_Split(@scops_string,',') where no = 5
+select @operatorid = data from CIMitar_Master..Func_Split(@scops_string,',') where no = 6
+select @customer = data from CIMitar_Master..Func_Split(@scops_string,',') where no = 7
+select @job = data from CIMitar_Master..Func_Split(@scops_string,',') where no = 8
+select @rcdfile = data from CIMitar_Master..Func_Split(@scops_string,',') where no = 9
+select @count = data from CIMitar_Master..Func_Split(@scops_string,',') where no = 10
+
+
+--초기화
+set @flag = ISNULL(@flag,'')
+set @hostname = ISNULL(@hostname,'')
+set @lotname = ISNULL(@lotname,'')
+set @dcc = ISNULL(@dcc,'')
+set @operation = ISNULL(@operation,'')
+set @operatorid = ISNULL(@operatorid,'')
+set @customer = ISNULL(@customer,'')
+set @job = ISNULL(@job,'')
+set @rcdfile = ISNULL(@rcdfile,'')
+set @count = ISNULL(@count,'')
+
+
+--Skip all tester
+--select 'NO, NO NEED - TESTER'
+--return
+
+----Skip hostname
+--if @hostname = 'WINDOWS-K3LA02' or @hostname = 'WINDOWS-K3LA08' 
+--	begin
+--		select 'NO, NO NEED - TESTER'
+--		return
+--	end
+
+--UAT hostname
+--if @hostname != 'WINDOWS-K3LA02' and @hostname != 'WINDOWS-K3LA08' 
+--	begin
+--		select 'NO, NO NEED - TESTER'
+--		return
+--	end
+
+--Get Lot information
+declare @testerplatformno as varchar (50)
+
+select @testerplatformno = platformtypeno from CIMitar_Master.dbo.Tester where hostname = @hostname
+set @testerplatformno = ISNULL(@testerplatformno,'')
+
+--Qorvo PAX tester에서만 진행
+if patindex('%173%',@testerplatformno) = 0 
+	begin
+		--select 'NO, NO NEED - TESTER'
+		--return
+
+		--Qorvo DMDX tester 진행
+		if @hostname != 'WINDOWS-K3DX03' and @hostname != 'WINDOWS-K3DX04'  and @hostname != 'WINDOWS-K3DX01' and @hostname != 'WINDOWS-K3DX02'
+			begin
+				select 'NO, NO NEED - TESTER'
+				return
+			end
+	
+	end 
+
+declare @customerCode as varchar (50)
+declare @testprogram as varchar (256)
+declare @amkorid as varchar (100)
+declare @subid as varchar (100)
+declare @amkor_sub_id as varchar (200)
+declare @jobname as varchar(10) = ''
+
+select @customerCode = WPCUS#, @amkorid = WWAMK, @subid = WSUB#, @testprogram = WPPGMR
+from CIMitar_Data.dbo.Data400 
+where WPLOT# = @lotname AND WPDCC = @dcc AND WPOPRN=  @operation 
+
+set @customerCode = ISNULL(@customerCode,'')
+set @amkorid = ISNULL(@amkorid,'')
+set @subid = ISNULL(@subid,'')
+set @testprogram = ISNULL(@testprogram,'')
+set @amkor_sub_id = @amkorid + '0' + @subid
+
+--Qorvo customer code만 진행
+
+if patindex('%575%',@customerCode) = 0  
+begin
+	select 'NO, NO NEED - CUSTOMER'
+	return
+end
+
+--최신버젼 scops만 logic실행
+declare @scopsversion as varchar(50)=''
+select @scopsversion = scopsversion from CIMitar_Master.dbo.TesterEnv where hostname =@hostname
+set @scopsversion = ISNULL(@scopsversion,'0')
+
+if @scopsversion not like '%UAT%'
+	begin
+		if @scopsversion < 54 
+		 begin
+			select 'NO, NO NEED - TESTER'
+			return
+		 end
+	end
+else
+	begin
+		select 'NO, NO NEED - TESTER'
+		return
+	end
+
+
+
+if patindex('FULL%',@job) = 1
+	begin
+		set @jobname = 'N'
+	end
+else if patindex('RE%',@job) = 1
+	begin
+		set @jobname = 'R'
+	end
+else if patindex('QA_FULL%',@job) = 1
+	begin
+		set @jobname = 'I'
+	end
+else if patindex('QA_RE%',@job) = 1
+	begin
+		set @jobname = 'B'
+	end
+
+
+IF UPPER(@flag) = 'CHECK' ---------------------------------------------------------------------
+BEGIN
+	declare @rcd_path varchar(256)
+	
+	-- 처음 단계
+	if @count = '0' 
+		begin
+			set @rcd_path = 'C:/RCD,*.gt1,2'  -- 전체 경우의 수
+		end 
+	
+	if @count = '1' 
+		begin
+			set @rcd_path = 'C:/RCD/Pending,*.gt3'							
+		end 
+	
+	select @rcd_path
+	
+END
+
+/*IF UPPER(@flag) = 'EXTENSION' ----------------------------------------------------------------
+BEGIN
+	--확장자
+	--e.g) .gt1, .gt3...
+	declare @extension varchar(256)
+	
+	if @count = '0'
+		begin
+			set @extension = '*.gt1'
+		end
+
+	if @count = '1'
+		begin
+			set @extension = '*.gt3'
+		end
+
+	select @extension
+
+END */
+
+IF UPPER(@flag) = 'VALIDATION' ----------------------------------------------------------------
+BEGIN
+	--RCD file 
+	--ex) C:/RCD/QM76285_2209828700_N_20210613175054K3LA08.gt1
+
+	declare @remove_string as varchar(50) 
+
+	if @count = '0' 
+		begin
+			set @remove_string = 'C:/RCD/'
+		end 
+
+	if @count = '1' 
+		begin
+			set @remove_string = 'C:/RCD/Pending/'
+		end 
+
+	declare @rcdfileLen as int = 0
+	set @rcdfileLen = LEN(@rcdfile)
+
+	--Check whether file name is normal or not
+	if @rcdfile not like '' + @remove_string + '%' or @rcdfileLen = 0
+		begin
+			exec [CIMitar_Factory].[dbo].[USP_HIM_Insert_Log] '11', @hostname
+
+			select 'YES,==================================newlinenewlineRCD File name is not normal!!newlinenewline' + @rcdfile + 'newlinenewline==================================newline'
+			return
+		end
+
+	declare @filename as varchar(MAX)
+	declare @pgmname as varchar(256)
+	declare @amkorsub as varchar(50)
+	declare @testtype as varchar(10)
+	declare @sessionid as varchar(256)
+
+	set @filename =  REVERSE(REPLACE(@rcdfile,@remove_string,''))
+	
+	select @amkorsub = data from CIMitar_Master..Func_Split(@filename,'_') where no = 3
+	select @testtype = data from CIMitar_Master..Func_Split(@filename,'_') where no = 2
+	select @sessionid = data from CIMitar_Master..Func_Split(@filename,'_') where no = 1
+
+	declare @splitname as varchar(256) = ''
+	set @splitname = '_' + REVERSE(@amkorsub) + '_' + REVERSE(@testtype) +'_' + REVERSE(@sessionid) 
+	set @pgmname = REPLACE(REPLACE(@rcdfile,@remove_string,''),@splitname,'')
+	set @amkorsub = REVERSE(@amkorsub)
+	set @testtype = REVERSE(@testtype)
+
+
+	--Check whether PGM name is true or not
+	if @testprogram != @pgmname
+		begin
+			exec [CIMitar_Factory].[dbo].[USP_HIM_Insert_Log] '11', @hostname
+
+			select 'YES,==================================newlinenewlinePGM Validation False!!newlinenewlineMES PGM : ' + @testprogram + 'newlinenewlineRCD PGM : ' + @pgmname 
+			+ 'newlinenewline==================================newline'
+			return
+		end
+
+	--Check whether amkor_sub_id is true or not
+	if @amkor_sub_id != @amkorsub
+		begin
+			exec [CIMitar_Factory].[dbo].[USP_HIM_Insert_Log] '11', @hostname
+
+			select 'YES,==================================newlinenewlineAMKOR/SUB ID Validation False!!newlinenewlineMES AMKOR/SUB ID : ' + @amkor_sub_id + 'newlinenewlineRCD AMKOR/SUB ID : ' + @amkorsub 
+			+ 'newlinenewline==================================newline'
+			return
+		end
+
+	--Check whether testtype is true or not
+	if @jobname != @testtype
+		begin
+			exec [CIMitar_Factory].[dbo].[USP_HIM_Insert_Log] '11', @hostname
+
+			select 'YES,==================================newlinenewlineTEST TYPE Validation False!!newlinenewlineSCOPS TEST TYPE : ' + @jobname + 'newlinenewlineRCD TEST TYPE : ' + @testtype 
+			+ 'newlinenewline==================================newline'
+			return
+		end
+
+	select 'NO,ALL VALIDATION IS PASS'
+	return
+END
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+USE [CIMitar_Master]
+GO
+/****** Object:  StoredProcedure [dbo].[USP_Scops_FuncQorvoLotCheck]    Script Date: 2024-09-09 오전 9:19:22 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+ALTER PROCEDURE [dbo].[USP_Scops_FuncQorvoLotCheck]
+    
+    @scops_string as varchar(1024)
+    
+AS
+SET NOCOUNT ON
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
+
+
+DECLARE @hostname as varchar(256)
+DECLARE @lotname as varchar(256)
+	
+select @hostname = data from CIMitar_Master..Func_Split(@scops_string,',') where no = 1
+select @lotname = data from CIMitar_Master..Func_Split(@scops_string,',') where no = 2
+
+set @hostname = ISNULL(@hostname,'')
+set @lotname = ISNULL(@lotname,'')
+
+
+-- 개발자 pc skip
+--if @hostname = 'test'
+--begin
+--	select 'NO, SKIP LOGIC'
+--	return
+--end
+
+--Qorvo고객라트가 아니면 PASS
+declare @emeshost as varchar(50) = ''
+select @emeshost = emeshost from CIMitar_Master.dbo.Tester where hostname = @hostname
+set @emeshost = isnull(@emeshost,'')
+
+declare @rfidlotname as varchar(100) = ''
+declare @rfidoperation as varchar(50) = ''
+
+select @rfidlotname = lotname, @rfidoperation = operation from CIMitar_Data.dbo.RFIDInfo  where hostnm =@emeshost 
+set @rfidlotname = isnull(@rfidlotname,'')
+set @rfidoperation = isnull(@rfidoperation,'')
+
+declare @sql_intime nvarchar(max)
+declare @param_intime nvarchar(max)
+							 
+set @sql_intime =	 N' 
+	select WPCUS#
+	from OPENQUERY([DATA400],''SELECT WPCUS#
+								FROM EMLIB.ECSRWP04  
+								WHERE WPLOT#= ''''' + @rfidlotname +''''' AND WPOPR = ''''' + @rfidoperation + ''''' '')
+								' 
+set @param_intime = N''
+	
+--print @sql_intime
+
+declare @tmpTable_in table(WPCUS# varchar(256))
+insert into @tmpTable_in execute sp_executesql @sql_intime,@param_intime
+
+declare @customercode as varchar (100)=''
+select @customercode = WPCUS# from @tmpTable_in
+
+print @customercode
+
+if @customercode = '575' or @customercode = '948' 
+	begin
+		declare @lotname_char1 as varchar(256) =''
+		declare @lotname_char2 as varchar(256) =''
+		set @lotname_char1 = REPLACE(@lotname,'^','')
+		set @lotname_char2 = REPLACE(@lotname_char1,'~','')
+
+		select 'YES,' + @lotname_char2
+		return
+	end
+else
+	begin
+		select 'NO,SKIP' 
+		return
+	end
