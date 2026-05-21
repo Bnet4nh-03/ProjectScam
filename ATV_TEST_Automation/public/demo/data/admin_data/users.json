@@ -1,0 +1,35 @@
+
+[
+    {
+        "id": 1001,
+        "name": "Alice Johnson",
+        "username": "alice",
+        "email": "alice.j@example.com",
+        "status": "Active",
+        "roleId": 1 
+    },
+    {
+        "id": 1002,
+        "name": "Bob Williams",
+        "username": "bob",
+        "email": "bob.w@example.com",
+        "status": "Active",
+        "roleId": 2
+    },
+    {
+        "id": 1003,
+        "name": "Charlie Brown",
+        "username": "charlie",
+        "email": "charlie.b@example.com",
+        "status": "Inactive",
+        "roleId": 3
+    },
+    {
+        "id": 1004,
+        "name": "Diana Prince",
+        "username": "diana",
+        "email": "diana.p@example.com",
+        "status": "Active",
+        "roleId": 2
+    }
+]

@@ -1,3 +1,0 @@
-#define THREAD_VERSION_UUID \
-e14fa771ae2e4bdca37a3afb4d4fe65b30fb41e544fec6104b070a47929a5310
-

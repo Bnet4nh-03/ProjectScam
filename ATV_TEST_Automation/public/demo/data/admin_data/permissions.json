@@ -1,0 +1,12 @@
+[
+    { "id": "user:list", "name": "Xem người dùng", "description": "Cho phép xem danh sách tất cả người dùng." },
+    { "id": "user:create", "name": "Tạo người dùng", "description": "Cho phép tạo một người dùng mới trong hệ thống." },
+    { "id": "user:edit", "name": "Sửa người dùng", "description": "Cho phép chỉnh sửa thông tin của người dùng hiện có." },
+    { "id": "user:delete", "name": "Xóa người dùng", "description": "Cho phép xóa người dùng khỏi hệ thống." },
+    { "id": "role:list", "name": "Xem nhóm quyền", "description": "Cho phép xem danh sách các nhóm quyền." },
+    { "id": "role:create", "name": "Tạo nhóm quyền", "description": "Cho phép tạo một nhóm quyền mới." },
+    { "id": "role:edit", "name": "Sửa nhóm quyền", "description": "Cho phép chỉnh sửa các nhóm quyền hiện có." },
+    { "id": "role:delete", "name": "Xóa nhóm quyền", "description": "Cho phép xóa các nhóm quyền." },
+    { "id": "dashboard:view", "name": "Xem tổng quan", "description": "Cho phép xem trang tổng quan chính." },
+    { "id": "report:view", "name": "Xem báo cáo", "description": "Cho phép truy cập và xem các báo cáo." }
+]

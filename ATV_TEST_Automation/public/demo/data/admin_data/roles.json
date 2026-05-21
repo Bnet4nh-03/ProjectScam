@@ -1,0 +1,25 @@
+
+[
+    {
+        "id": 1,
+        "name": "Administrator",
+        "description": "Quản trị viên hệ thống, có tất cả các quyền",
+        "permissions": [
+            "user:list", "user:create", "user:edit", "user:delete",
+            "role:list", "role:create", "role:edit", "role:delete",
+            "dashboard:view", "report:view"
+        ]
+    },
+    {
+        "id": 2,
+        "name": "Manager",
+        "description": "Quản lý, có thể xem người dùng và báo cáo",
+        "permissions": ["user:list", "dashboard:view", "report:view"]
+    },
+    {
+        "id": 3,
+        "name": "User",
+        "description": "Người dùng cơ bản, chỉ xem được dashboard",
+        "permissions": ["dashboard:view"]
+    }
+]
