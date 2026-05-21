@@ -1,0 +1,61 @@
+erDiagram
+    ACH_Device ||--o{ ACH_TesterHardwareMaster : "configured_for"
+    ACH_Package ||--o{ ACH_TesterHardwareMaster : "applied_to"
+    
+    ACH_TesterHardwareMaster ||--o{ ACH_MasterHardwareMapping : "contains"
+    ACH_TesterHardwareMaster ||--o{ ACH_MasterAttachments : "has"
+    ACH_TesterHardwareMaster ||--|| ACH_TesterHardwareMatrix : "publishes"
+
+    ACH_Device {
+        int DeviceID PK
+        string DeviceCode
+        int CustomerID "External FK"
+    }
+
+    ACH_Package {
+        int PackageID PK
+        string PackageName
+    }
+
+    ACH_TesterHardwareMaster {
+        int MasterID PK
+        int CustomerID "External FK"
+        int DeviceID FK
+        int PackageID FK
+        int TesterID "External FK"
+        string TesterName
+        float Pitch
+        string HandlerRecipe
+        string DoubleCheckStatus
+        string ApproverBadgeNo
+        string CreatedBy
+        datetime CreatedAt
+        datetime UpdatedAt
+    }
+
+    ACH_MasterHardwareMapping {
+        int MappingID PK
+        int MasterID FK
+        string HardwareType
+        string HardwareID "External FK"
+        string HardwareCode "Hardware Name"
+        int Qty
+    }
+
+    ACH_MasterAttachments {
+        int AttachmentID PK
+        int MasterID FK
+        string FileName
+        string FileSize
+        string FileType
+        string FilePath
+        datetime UploadedAt
+    }
+
+    ACH_TesterHardwareMatrix {
+        int MatrixID PK
+        int MasterID FK "Unique"
+        string Status
+        string PublishedBy
+        datetime PublishedAt
+    }

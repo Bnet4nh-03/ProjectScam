@@ -1,0 +1,49 @@
+/* You can add global styles to this file, and also import other style files */
+@use '@/assets/layout/layout.scss';
+@use 'primeicons/primeicons.css';
+@use '@/assets/demo/demo.scss';
+
+
+.ag-body-viewport{
+    background-color: var(--surface-card) !important;
+}
+
+.highcharts-button-box {
+    fill: var(--surface-card) !important;
+    /* Màu chữ */
+}
+
+.highcharts-button text {
+    fill: var(--p-primary-500) !important;
+}
+
+.ag-header,
+.ag-row,
+.ag-paging-panel,
+.ag-center-cols-viewport,
+.ag-cell-label-container {
+    /* Màu nền */
+    background-color: var(--surface-card) !important;
+    color: var(--text-color) !important;
+}
+
+.ag-cell-label-container,
+.ag-icon-filter {
+    color: var(--primary-color) !important;
+}
+
+.ag-header-cell-text{
+    margin: auto;
+}
+
+.highcharts-credits {
+    display: none !important;
+}
+
+.highcharts-grid-line{
+     stroke: #e6e6e659 !important;
+}
+
+.p-dialog-header{
+    padding: 7px 15px 0px 15px !important;
+}

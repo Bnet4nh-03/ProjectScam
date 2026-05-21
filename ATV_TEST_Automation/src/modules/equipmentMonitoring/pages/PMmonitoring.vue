@@ -1,0 +1,581 @@
+<script setup>
+import { ref, onMounted, onUnmounted , inject, watch, computed } from 'vue'
+import TableSection from '@/modules/equipmentMonitoring/component/TableSection.vue'
+import ChartSection from '@/modules/equipmentMonitoring/component/ChartSection.vue'
+import TopJamTable from '@/modules/equipmentMonitoring/component/TopJamTable.vue'
+import { Chart, registerables } from 'chart.js';
+import ChartDataLabels from 'chartjs-plugin-datalabels';
+
+Chart.register(...registerables, ChartDataLabels);
+
+const apiClient = inject('apiClient')
+
+const mtbaDataTableMap = ref({});
+const mtbaColumnTableMap = ref({});
+
+const chartMtbaDataMap = ref({});
+const chartMtbaOptionsMap = ref({});
+
+const mtbfDataTableMap = ref({})
+const mtbfColumnTableMap = ref({})
+
+const chartMtbfDataMap = ref({});
+const chartMtbfOptionsMap = ref({});
+
+const mtbaSummaryTopJamDataMap = ref({})
+const totalJamDataMap = ref({});
+const totalJamColumnsMap = ref({});
+
+const lineCode = ref([])
+const platformModels = ref([])
+const currentLineCode = ref(localStorage.getItem('currentLineCode') || '');
+const currentPlatform = ref(localStorage.getItem('currentPlatform') || '');
+
+function getTodayDate() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getTodayDateTime(){
+  const today = getTodayDate();
+  return `${today} 00:00:00`;   //return '2025-11-04 00:00:00'
+}
+
+function getCurrentDateTime() {
+    const now = new Date();
+
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  }
+
+function getColumnDataTable(dataTable){
+  if (!Array.isArray(dataTable.value) || dataTable.value.length === 0) {
+    return [];
+  }
+  return Object.keys(dataTable.value[0]);
+}
+
+async function get_MTBA_data(fromTime, toTime, platformnm) {
+  let param;
+  param = {
+    "@from_time" : fromTime,
+    "@to_time" : toTime,
+    "@platformnm": platformnm
+    }
+  const resp = await apiClient.callSp("[TestDB]..[USP_PmMonitor_Get_MTBA_Data]", param)
+  return resp[0]['data']
+  
+}
+
+async function get_MTBF_data(platformnm) {
+  let param;
+  param = {
+    "@platformnm": platformnm
+    }
+  const resp = await apiClient.callSp("[TestDB]..[USP_PmMonitor_Get_MTBF_Data]", param)
+
+  return resp[0]['data']
+}
+
+async function getCommonData(condition, platformtyp, line_code = "") {
+  if (platformtyp == '' && condition == 'Get machine list'){
+    platformtyp = 'TW350HT'
+  }
+  let param;
+  param = {
+    "@Condition" : condition,
+    "@Platformnm": platformtyp,
+    "@Current_line": line_code
+    }
+  const resp = await apiClient.callSp("[TestDB]..[USP_PmMonitor_Get_Common_Data]", param)
+  
+  return resp[0]['data']
+}
+
+async function getTopJamListMtba(handler) {
+  let param;
+  let json_para = `{"handler" : "${handler}"} `
+  param = {
+    "@json_para" : json_para,
+    }
+  const resp = await apiClient.callSp("[TestDB]..[USP_PmMonitor_Get_Top_JAM_Error]", param)
+  return resp[0]['data']
+}
+
+async function getTotalJamList(from_date, to_date, platform_type) {
+  let param;
+  param = {
+    "@From_date" : from_date,
+    "@To_date": to_date,
+    "@Platform_type": platform_type
+    }
+  const resp = await apiClient.callSp("[TestDB]..[USP_PmMonitor_Get_Total_JAM_List]", param)
+  
+  return resp[0]['data']
+}
+
+async function getPlatformType() {
+  const platFormTyps = await getCommonData('Get rsc type', '')
+  const platFormItems = platFormTyps.map(item => item.rcs_type)
+  return platFormItems
+}
+
+async function getLinesCode() {
+  const result = await getCommonData('Get current line', '', '')
+  const allLineCode = result.map(item => item.current_line)
+  return allLineCode
+}
+
+async function getPlatformLineCode(lineCode) {
+  const result = await getCommonData('Get platform', '', lineCode)
+  const allPlatform = result.map(item => item.model_no)
+  return allPlatform
+}
+
+function pivotData(data, metrics) {
+  //check if data is an array or not
+  if (!Array.isArray(data) || data.length === 0) {
+    return [];
+  }
+  
+  // Create a new array, each element is a row of data according to each index
+  const pivoted = metrics.map(metricName => {
+    const row = { Machine: metricName }; //Initial a new object with index name is Machine
+    // loop through each element of the data
+    data.forEach(item => {
+      row[item.Handler] = item[metricName]; //Assign the value of the corresponding index to the Handler name
+    });
+ 
+    return row;
+  });
+
+  return pivoted;
+}
+
+function getChartOptions(text) {
+  return {
+    responsive: true, // Biểu đồ tự động điều chỉnh kích thước theo màn hình
+    maintainAspectRatio: false, // Không giữ tỷ lệ khung hình gốc (cho phép biểu đồ co giãn tự do)
+
+    plugins: {
+      legend: {
+        position: 'bottom', // Vị trí của chú thích (legend) nằm dưới biểu đồ
+        labels: {
+          usePointStyle: true, // Dùng biểu tượng điểm thay vì hình chữ nhật
+          font: { size: 14 } // Kích thước chữ trong legend
+        }
+      },
+
+      title: {
+        display: true, // Hiển thị tiêu đề biểu đồ
+        text: text + ' Chart Data' // Nội dung tiêu đề
+      },
+
+      datalabels: {
+        display: function(context) {
+          return context.dataset.type === 'bar';
+        },
+        anchor: 'end', // Vị trí neo của nhãn (ở cuối cột)
+        align: 'top', // Căn nhãn ở phía trên
+        formatter: value => value, // Hàm định dạng giá trị hiển thị
+        font: {
+          weight: 'bold', // Chữ đậm
+          size: 12 // Kích thước chữ
+        },
+        color: '#000' // Màu chữ là đen
+      }
+    }
+  };
+}
+
+function generateChartDataForPlatform(labels, dataChart, platform) {
+
+  if (!labels || !dataChart === 0 ) return null;
+
+  let target;
+  switch (platform) {
+    case 'TW350HT':
+      target = 350;
+      break;
+    case 'M6243':
+    case 'M850A':
+      target = 300;
+      break;
+    case 'TWSL301N':
+      target = 300;
+      break;
+    case 'HT-7045':
+    case 'HT-9045F':
+      target = 250;
+      break;
+    default:
+      //target = 200;
+  }
+  const targetData = new Array(labels.length).fill(target);
+  const barColors = dataChart.map(value => value < target ? '#df7132' : '#92d050');
+  const bar2Color = barColors[0] === '#92d050' ? '#df7132' : '#92d050';
+
+  const datasets = [
+    {
+      type: 'line',
+      label: 'Target',
+      data: targetData,
+      borderColor: '#156082',
+      backgroundColor: '#156082',
+      fill: false,
+      tension: 0.8,
+      pointStyle: 'line'
+    },
+    {
+      type: 'bar',
+      label: 'MTBA',
+      data: dataChart,
+      backgroundColor: barColors,
+      pointStyle: 'rect',
+      barThickness: 30
+    },
+    {
+      type: 'bar',
+      label: 'MTBA',
+      backgroundColor: bar2Color,
+      pointStyle: 'rect',
+    }
+  ];
+
+  return {
+    labels,
+    datasets
+  };
+}
+
+function generateChartDataMtbf(labels, dataChart) {
+
+  if (!labels || !dataChart === 0 ) return null;
+
+  const datasets = [
+    {
+      type: 'bar',
+      label: 'MTBF',
+      data: dataChart,
+      backgroundColor: '#0d437f',
+      pointStyle: 'rect',
+      barThickness: 30
+    },
+
+  ];
+
+  return {
+    labels,
+    datasets
+  };
+}
+
+// ==== Helpers ====
+function clearMaps() {
+  mtbaDataTableMap.value = {};
+  mtbaColumnTableMap.value = {};
+  chartMtbaDataMap.value = {};
+  chartMtbaOptionsMap.value = {};
+
+  // mtbfDataTableMap.value = {};
+  // mtbfColumnTableMap.value = {};
+  // chartMtbfDataMap.value = {};
+  // chartMtbfOptionsMap.value = {};
+
+  mtbaSummaryTopJamDataMap.value = {};
+  totalJamDataMap.value = {};
+  totalJamColumnsMap.value = {};
+}
+
+// Chỉ render platform hiện đang chọn
+const visiblePlatforms = computed(() => {
+  return currentPlatform.value ? [currentPlatform.value] : [];
+});
+
+// ==== Init options (tải options một lần khi mount hoặc khi Line Code đổi) ====
+async function initOptionsOnce() {
+  // Tải danh sách Line Code
+  
+  lineCode.value = await getLinesCode();
+  // Nếu lựa chọn cũ không hợp lệ -> chọn phần tử đầu
+  if (!currentLineCode.value || !lineCode.value.includes(currentLineCode.value)) {
+    currentLineCode.value = lineCode.value[0] || '';
+    localStorage.setItem('currentLineCode', currentLineCode.value);
+  }
+
+  //Get existed platform has data MTBA
+  const existedPlatform = new Set(await getPlatformType())
+  const resultPlatforms = await getPlatformLineCode(currentLineCode.value);
+
+  //Remove platform does not has data
+  for (const item of resultPlatforms){
+    if (existedPlatform.has(item)){
+      platformModels.value.push(item)
+    }
+  }
+
+  if (!currentPlatform.value || !platformModels.value.includes(currentPlatform.value)) {
+    currentPlatform.value = platformModels.value[0] || '';
+    localStorage.setItem('currentPlatform', currentPlatform.value);
+  }
+}
+
+// ==== Watchers cho filter ====
+watch(currentLineCode, async (newLine) => {
+  platformModels.value = []
+  localStorage.setItem('currentLineCode', newLine || '');
+
+  //Get existed platform has data MTBA
+  const existedPlatform = new Set(await getPlatformType())
+  const resultPlatforms = await getPlatformLineCode(newLine);
+  //Remove platform does not has data
+  for (const item of resultPlatforms){
+    if (existedPlatform.has(item)){
+      platformModels.value.push(item)
+    }
+  }
+
+  // platformModels.value = await getPlatformLineCode(newLine);
+
+  // Synchronize currentPlatform with the new list.
+  if (!platformModels.value.includes(currentPlatform.value)) {
+    currentPlatform.value = platformModels.value[0] || '';
+    localStorage.setItem('currentPlatform', currentPlatform.value);
+  }
+
+  // when changing Line -> remove old data và fetch data for current platform 
+  clearMaps();
+  await displayAllData();
+});
+
+watch(currentPlatform, async (newPlatform) => {
+  localStorage.setItem('currentPlatform', newPlatform || '');
+
+  // when changing Platform -> remove old data and fetch data for new platform
+  clearMaps();
+  await displayAllData();
+});
+
+// ==== CHỈ fetch data cho platform đã chọn ====
+async function displayAllData() {
+  const platform = currentPlatform.value;
+  if (!platform) return;
+                                   
+  // --- MTBA ---
+  const mtbaResult = await get_MTBA_data(getTodayDateTime(), getCurrentDateTime(), platform);
+  const mtbaMetrics = ['Run Time', 'JAM Count', 'MTBA'];
+  const pivotedDataMtba = pivotData(mtbaResult, mtbaMetrics);
+  const mtbaColumns = getColumnDataTable({ value: pivotedDataMtba });
+
+  mtbaDataTableMap.value[platform] = pivotedDataMtba;
+  mtbaColumnTableMap.value[platform] = mtbaColumns;
+
+  const mtbaLabels = mtbaResult.map(item => item.Handler);
+  const mtbaDataChart = mtbaResult.map(item => item.MTBA);
+  const chartDataMtba = generateChartDataForPlatform(mtbaLabels, mtbaDataChart, platform);
+  if (chartDataMtba) {
+    chartMtbaDataMap.value[platform] = chartDataMtba;
+    chartMtbaOptionsMap.value[platform] = getChartOptions(platform + ' MTBA');
+  }
+
+  // --- MTBF ---
+  const mtbfResult = await get_MTBF_data(platform);
+  const mtbfMetrics = ['Run Time', 'Total Assist', 'MTBF'];
+  const pivotDataMtbf = pivotData(mtbfResult, mtbfMetrics);
+  const mtbfColumns = getColumnDataTable({ value: pivotDataMtbf });
+
+  mtbfDataTableMap.value[platform] = pivotDataMtbf;
+  mtbfColumnTableMap.value[platform] = mtbfColumns;
+
+  const mtbfLabels = mtbfResult.map(item => item.Handler);
+  const mtbfDataChart = mtbfResult.map(item => item.MTBF);
+  const chartDataMtbf = generateChartDataMtbf(mtbfLabels, mtbfDataChart);
+  if (chartDataMtbf) {
+    chartMtbfDataMap.value[platform] = chartDataMtbf;
+    chartMtbfOptionsMap.value[platform] = getChartOptions(platform + ' MTBF');
+  }
+
+  // --- Top JAM cho platform đang chọn ---
+  const topJamRows = [];
+  const dataArray = mtbaDataTableMap.value[platform] || [];
+  for (const data of dataArray) {
+    if (data['Machine'] === 'JAM Count') {
+      const entries = Object.entries(data)
+        .filter(([key, value]) => key !== 'Machine' && value > 0)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3);
+
+      for (const [handler] of entries) {
+        const jamDetail = await getTopJamListMtba(handler); // API trả về chi tiết Jam
+        const jams = jamDetail.map(jamRow => ([
+          { No: jamRow['No'], 'Jam ID': jamRow['Jam ID'], 'Jam Description': jamRow['Jam Description'], Quantity: jamRow['Quantity'] }
+        ]));
+        topJamRows.push({ machine: handler, jams });
+      }
+    }
+  }
+
+  mtbaSummaryTopJamDataMap.value[platform] = topJamRows;
+
+  // --- Total Jam List ---
+  const totalJamResult = await getTotalJamList(getTodayDate(), getTodayDate(), platform);
+  if (totalJamResult && totalJamResult.length > 0) {
+    totalJamDataMap.value[platform] = totalJamResult;
+    totalJamColumnsMap.value[platform] = Object.keys(totalJamResult[0]);
+  }
+}
+
+onMounted(async () => {
+  // Tải options ban đầu và đồng bộ lựa chọn từ localStorage
+  await initOptionsOnce();
+
+  // Hiển thị dữ liệu theo lựa chọn hiện tại
+  await displayAllData();
+
+  // Refresh mỗi 3 phút: chỉ refresh data theo lựa chọn hiện tại, KHÔNG reset options
+  const intervalId = setInterval(async () => {
+    await displayAllData();
+  }, 180000);
+
+  // Dọn interval khi unmount
+  onUnmounted(() => {
+    clearInterval(intervalId);
+  });
+});
+
+</script>
+
+
+<template>
+  <div class="card flex flex-wrap items-end gap-5">
+    <FloatLabel class="w-full md:w-56">
+      <Select v-model="currentLineCode" inputId="over_label" :options="lineCode" class="w-full" />
+      <label for="over_label">Line Code</label>
+    </FloatLabel>
+
+    <FloatLabel class="w-full md:w-56">
+      <Select v-model="currentPlatform" inputId="over_label" :options="platformModels" class="w-full" />
+      <label for="over_label">Platform Type</label>
+    </FloatLabel>
+  </div>
+
+  <div v-for="platform in visiblePlatforms" :key="platform">
+    <div>
+      <h2>{{ platform }} MTBA Data Visualization</h2>
+
+      <div class="card charts-row">
+        <ChartSection
+          v-if="chartMtbaDataMap[platform] && chartMtbaOptionsMap[platform]"
+          :chartData="chartMtbaDataMap[platform]"
+          :chartOptions="chartMtbaOptionsMap[platform]"
+          class="chart-item"
+        />
+        <!--
+        <ChartSection
+          v-if="chartMtbfDataMap[platform] && chartMtbfOptionsMap[platform]"
+          :chartData="chartMtbfDataMap[platform]"
+          :chartOptions="chartMtbfOptionsMap[platform]"
+          class="chart-item"
+        />
+        -->
+      </div>
+
+      <div class="card tables-row">
+        <div class="table-item">
+          <TableSection
+            :title="`${platform} MTBA Data`"
+            :columns="mtbaColumnTableMap[platform]"
+            :rowData="mtbaDataTableMap[platform]"
+          />
+        </div>
+        <!--
+        <div class="table-item">
+          <TableSection
+            :title="`${platform} MTBF Data`"
+            :columns="mtbfColumnTableMap[platform]"
+            :rowData="mtbfDataTableMap[platform]"
+          />
+        </div>
+        -->
+      </div>
+
+      <div class="card tables-row">
+        <TopJamTable
+          v-if="mtbaSummaryTopJamDataMap[platform]"
+          :title="`${platform} Top 3 Worst M/C`"
+          :topJamSummary="mtbaSummaryTopJamDataMap[platform]"
+        />
+      </div>
+      
+      <div class="card tables-row" v-if="totalJamDataMap[platform]">
+        <div class="table-item">
+          <TableSection
+            :title="`${platform} Total Jam List`"
+            :columns="totalJamColumnsMap[platform]"
+            :rowData="totalJamDataMap[platform]"
+          />
+        </div>
+      </div>
+    </div>
+  </div>
+
+</template>
+
+
+<style scoped>
+
+h2 {
+  margin-top: 2rem;
+  color: black;
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+/* Put children side-by-side */
+.charts-row {
+  display: flex;
+  gap: 1rem;
+  align-items: stretch;
+  flex-wrap: wrap;           /* stack on small screens */
+  margin-bottom: 2rem;       /* thêm khoảng cách dưới chart */
+}
+
+/* Each chart takes half width */
+.chart-item {
+  flex: 1 1 480px;           /* grow, shrink, base width ~480px */
+  min-width: 320px;          /* allow two charts on medium screens */
+}
+
+.tables-row {
+  display: flex;
+  gap: 1rem;                 /* space between tables */
+  flex-wrap: wrap;           /* stack on small screens */
+  margin-bottom: 2rem;       /* thêm khoảng cách dưới table */
+}
+
+.table-item {
+  flex: 1 1 480px;        /* each table tries to be ~480px wide */
+  min-width: 320px;       /* prevent too narrow tables */
+  box-sizing: border-box;
+}
+
+.line-selector {
+  margin-top: 2rem; /* or padding-top */
+}
+
+.card {
+  margin-bottom: 1rem;
+}
+
+</style>
