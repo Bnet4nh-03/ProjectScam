@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Encryption & Decryption Support Tool</title>
+    <script src="./ForPublic/crypto-js.4.1.1.min.js"></script>
+    <script src="./ForPublic/pako.2.1.0.min.js"></script>
+    <style>
+        /* Re-using the same styles from test_encrypted_api.html for consistency */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 960px; margin: 20px auto; padding: 0 15px; background-color: #f4f4f4; }
+        h1, h2 { color: #1a1a1a; }
+        h2 { border-bottom: 1px solid #eaeaea; padding-bottom: 10px; margin-top: 40px; }
+        .container { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"], textarea { width: 100%; padding: 8px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        textarea { height: 150px; resize: vertical; font-family: "Courier New", Courier, monospace; }
+        button { background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; margin-right: 10px; }
+        button:hover { background-color: #0056b3; }
+        pre { background-color: #eee; padding: 15px; border-radius: 4px; white-space: pre-wrap; word-wrap: break-word; font-family: "Courier New", Courier, monospace; }
+        .error { color: #d8000c; background-color: #ffbaba; border: 1px solid; padding: 10px; border-radius: 4px; }
+        .flex-container { display: flex; align-items: center; gap: 10px; }
+        .flex-container input { flex-grow: 1; }
+        .flex-container button { flex-shrink: 0; }
+    </style>
+</head>
+<body>
+
+    <h1>Encryption & Decryption Support Tool</h1>
+    <p>Use this tool to manually encrypt payloads for use with tools like Postman, or to decrypt responses for debugging.</p>
+
+    <!-- Encryption Section -->
+    <div class="container">
+        <h2>Encrypt Payload</h2>
+        
+        <label for="enc-kxi">KXI (Key:IV)</label>
+        <div class="flex-container">
+            <input type="text" id="enc-kxi" placeholder="Will be generated or can be pasted here">
+            <button id="generateKxiBtn">Generate New KXI</button>
+        </div>
+
+        <label for="enc-plaintext">Plaintext JSON Payload</label>
+        <textarea id="enc-plaintext">{ "key": "value" }</textarea>
+
+        <button id="encryptBtn">Encrypt</button>
+
+        <div id="encrypt-results" style="display:none; margin-top: 20px;">
+            <h3>Results</h3>
+            <label>KXI Header Value:</label>
+            <pre id="enc-result-kxi"></pre>
+            <label>Encrypted Body (Base85):</label>
+            <pre id="enc-result-body"></pre>
+        </div>
+    </div>
+
+    <!-- Decryption Section -->
+    <div class="container">
+        <h2>Decrypt Response</h2>
+
+        <label for="dec-kxi">KXI Header from Response</label>
+        <input type="text" id="dec-kxi" placeholder="Paste KXI from response header">
+
+        <label for="dec-ciphertext">Encrypted Body from Response (Base85)</label>
+        <textarea id="dec-ciphertext"></textarea>
+
+        <button id="decryptBtn">Decrypt</button>
+
+        <div id="decrypt-results" style="display:none; margin-top: 20px;">
+            <h3>Result</h3>
+            <label>Decrypted Body:</label>
+            <pre id="dec-result-body"></pre>
+        </div>
+    </div>
+    
+    <!-- Error Log -->
+    <div id="error-log" class="container" style="display:none;">
+        <h2>Error</h2>
+        <pre id="error-content" class="error"></pre>
+    </div>
+
+    <script type="module">
+        import { generateRandomKxi, encryptData, decryptData, base85 } from './test_request_enco.js';
+
+        // --- DOM Elements ---
+        const generateKxiBtn = document.getElementById('generateKxiBtn');
+        const encryptBtn = document.getElementById('encryptBtn');
+        const decryptBtn = document.getElementById('decryptBtn');
+
+        const encKxiInput = document.getElementById('enc-kxi');
+        const encPlaintextInput = document.getElementById('enc-plaintext');
+        const encResultKxi = document.getElementById('enc-result-kxi');
+        const encResultBody = document.getElementById('enc-result-body');
+        const encryptResultsDiv = document.getElementById('encrypt-results');
+
+        const decKxiInput = document.getElementById('dec-kxi');
+        const decCiphertextInput = document.getElementById('dec-ciphertext');
+        const decResultBody = document.getElementById('dec-result-body');
+        const decryptResultsDiv = document.getElementById('decrypt-results');
+        
+        const errorLogDiv = document.getElementById('error-log');
+        const errorContent = document.getElementById('error-content');
+
+        // --- Helper Functions ---
+        function hideAll() {
+            encryptResultsDiv.style.display = 'none';
+            decryptResultsDiv.style.display = 'none';
+            errorLogDiv.style.display = 'none';
+        }
+
+        function showError(message) {
+            errorContent.textContent = message;
+            errorLogDiv.style.display = 'block';
+        }
+
+        // --- Event Listeners ---
+        generateKxiBtn.addEventListener('click', async () => {
+            hideAll();
+            const { kxi } = await generateRandomKxi();
+            encKxiInput.value = kxi;
+        });
+
+        encryptBtn.addEventListener('click', async () => {
+            hideAll();
+            try {
+                let kxi = encKxiInput.value;
+                let key, iv;
+
+                if (!kxi) {
+                    const generated = await generateRandomKxi();
+                    kxi = generated.kxi;
+                    key = generated.key;
+                    iv = generated.iv;
+                    encKxiInput.value = kxi;
+                } else {
+                    const [keyB85, ivB85] = kxi.split(':');
+                    if (!keyB85 || !ivB85) throw new Error("Invalid KXI format. Expected 'key:iv'.");
+                    key = base85.decode(keyB85);
+                    iv = base85.decode(ivB85);
+                }
+
+                const plaintext = encPlaintextInput.value;
+                // Validate if plaintext is valid JSON
+                JSON.parse(plaintext);
+
+                const encryptedBody = await encryptData(plaintext, key, iv);
+
+                encResultKxi.textContent = kxi;
+                encResultBody.textContent = encryptedBody;
+                encryptResultsDiv.style.display = 'block';
+
+            } catch (error) {
+                showError(`Encryption failed: ${error.message}`);
+            }
+        });
+
+        decryptBtn.addEventListener('click', async () => {
+            hideAll();
+            try {
+                const kxi = decKxiInput.value;
+                const ciphertext = decCiphertextInput.value;
+
+                if (!kxi || !ciphertext) {
+                    throw new Error("KXI and Encrypted Body must not be empty.");
+                }
+
+                const [keyB85, ivB85] = kxi.split(':');
+                if (!keyB85 || !ivB85) throw new Error("Invalid KXI format. Expected 'key:iv'.");
+                
+                const key = base85.decode(keyB85);
+                const iv = base85.decode(ivB85);
+
+                const decrypted = await decryptData(ciphertext, key, iv);
+                
+                // Try to pretty-print if it's JSON
+                try {
+                    const decryptedJson = JSON.parse(decrypted);
+                    decResultBody.textContent = JSON.stringify(decryptedJson, null, 2);
+                } catch {
+                    decResultBody.textContent = decrypted; // Show as plain text if not JSON
+                }
+                
+                decryptResultsDiv.style.display = 'block';
+
+            } catch (error) {
+                showError(`Decryption failed: ${error.message}`);
+            }
+        });
+
+    </script>
+</body>
+</html>

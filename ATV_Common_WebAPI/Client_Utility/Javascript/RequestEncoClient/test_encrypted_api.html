@@ -1,0 +1,431 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Encrypted API Test Client</title>
+    <script src="./ForPublic/crypto-js.4.1.1.min.js"></script>
+    <script src="./ForPublic/pako.2.1.0.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 960px;
+            margin: 20px auto;
+            padding: 0 15px;
+            background-color: #f4f4f4;
+        }
+
+        h1, h2 {
+            color: #1a1a1a;
+        }
+
+        h2 {
+            border-bottom: 1px solid #eaeaea;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input[type="text"], textarea, select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        textarea {
+            height: 150px;
+            resize: vertical;
+            font-family: "Courier New", Courier, monospace;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+            button:hover {
+                background-color: #0056b3;
+            }
+
+            button:disabled {
+                background-color: #ccc;
+                cursor: not-allowed;
+            }
+
+        pre {
+            background-color: #eee;
+            padding: 15px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: "Courier New", Courier, monospace;
+        }
+
+        .log-section {
+            margin-top: 20px;
+        }
+
+        .error {
+            color: #d8000c;
+            background-color: #ffbaba;
+            border: 1px solid;
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        #file-input-container {
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Encrypted API Test Client</h1>
+
+        <h2>Configuration</h2>
+        <label for="endpointType">Endpoint Type:</label>
+        <select id="endpointType">
+            <option value="dbEnco" selected>DB EnCo (JSON)</option>
+            <option value="file_list">File Op: List</option>
+            <option value="file_move">File Op: Move</option>
+            <option value="file_copy">File Op: Copy</option>
+            <option value="file_delete">File Op: Delete</option>
+            <option value="file_rename">File Op: Rename</option>
+            <option value="file_create_dir">File Op: Create Directory</option>
+            <option value="upload">File Upload (Encrypted Metadata)</option>
+            <option value="download">File Download (Encrypted Request)</option>
+        </select>
+
+        <label for="apiUrl">API URL:</label>
+        <input type="text" id="apiUrl">
+
+        <div id="file-input-container" style="display:none;">
+            <label for="fileInput">File:</label>
+            <input type="file" id="fileInput">
+        </div>
+
+        <label for="payload">Request Payload (JSON):</label>
+        <textarea id="payload"></textarea>
+
+        <button id="sendRequestBtn">Send Request</button>
+
+        <div id="logs">
+            <div class="log-section" id="request-log" style="display:none;">
+                <h2>Request Details</h2>
+                <label>Generated Request KXI (Key:IV):</label>
+                <pre id="req-kxi"></pre>
+                <label>Encrypted Request Body/Metadata (Base85):</label>
+                <pre id="req-body"></pre>
+            </div>
+            <div class="log-section" id="response-log" style="display:none;">
+                <h2>Response Details</h2>
+                <label>Response Status:</label>
+                <pre id="res-status"></pre>
+                <label>Response KXI Header:</label>
+                <pre id="res-kxi"></pre>
+                <label>Encrypted Response Body (Base85):</label>
+                <pre id="res-body-encrypted"></pre>
+                <label>Decrypted Response Body:</label>
+                <pre id="res-body-decrypted"></pre>
+            </div>
+            <div class="log-section" id="download-log" style="display:none;">
+                <h2>File Download</h2>
+                <label>Status:</label>
+                <pre id="download-status"></pre>
+                <label>File:</label>
+                <div id="download-link-container"></div>
+            </div>
+            <div class="log-section" id="error-log" style="display:none;">
+                <h2>Error</h2>
+                <pre id="error-content" class="error"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Check for Web Crypto API availability (requires a secure context: HTTPS or localhost)
+        //if (!window.crypto || !window.crypto.subtle) {
+        //    const errorMsg = "Web Crypto API not available. This page must be served over HTTPS or from localhost to use cryptographic functions.";
+        //    document.getElementById('error-content').textContent = errorMsg;
+        //    document.getElementById('error-log').style.display = 'block';
+        //    document.getElementById('sendRequestBtn').disabled = true;
+        //    document.getElementById('sendRequestBtn').textContent = 'Crypto Unavailable';
+        //    // Stop script execution by throwing an error
+        //    throw new Error(errorMsg);
+        //}
+
+        import { generateRandomKxi, encryptData, decryptData, base85 } from './test_request_enco.js';
+
+        // --- UI and API Logic ---
+        const sendRequestBtn = document.getElementById('sendRequestBtn');
+        const endpointTypeSelect = document.getElementById('endpointType');
+        const apiUrlInput = document.getElementById('apiUrl');
+        const payloadInput = document.getElementById('payload');
+        const fileInputContainer = document.getElementById('file-input-container');
+        const fileInput = document.getElementById('fileInput');
+
+        const defaultPayloads = {
+            dbEnco: {
+                url: "http://localhost:5067/Common/Data_Method/DB_EnCo/Call_SP",
+                payload: JSON.stringify({
+                    "dbKey": "CIMitar",
+                    "spName": "[ATV_Common].[dbo].[TEST_Common]",
+                    "spQuery": { "@user_id": "112", "@badgeno": "abca" },
+                    "logSave": false
+                }, null, 2)
+            },
+            file_list: {
+                url: "http://localhost:5067/Common/File_Method/File_Ops",
+                payload: JSON.stringify({
+                    command: "list",
+                    operation: {
+                        sourcePath: "\\\\10.201.21.10\\v1tstprodlog$",
+                        filePattern: "*.txt",
+                        paginate: true,
+                        pageNumber: 1,
+                        pageSize: 10
+                    }
+                }, null, 2)
+            },
+            file_move: {
+                url: "http://localhost:5067/Common/File_Method/File_Ops",
+                payload: JSON.stringify({
+                    command: "move",
+                    operation: {
+                        sourcePath: "\\\\path\\to\\source.txt",
+                        destinationPath: "\\\\path\\to\\destination.txt"
+                    }
+                }, null, 2)
+            },
+            file_copy: {
+                url: "http://localhost:5067/Common/File_Method/File_Ops",
+                payload: JSON.stringify({
+                    command: "copy",
+                    operation: {
+                        sourcePath: "\\\\path\\to\\source.txt",
+                        destinationPath: "\\\\path\\to\\copy.txt"
+                    }
+                }, null, 2)
+            },
+            file_delete: {
+                url: "http://localhost:5067/Common/File_Method/File_Ops",
+                payload: JSON.stringify({
+                    command: "delete",
+                    operation: {
+                        sourcePath: "\\\\path\\to\\deleteme.txt",
+                        recursive: false
+                    }
+                }, null, 2)
+            },
+            file_rename: {
+                url: "http://localhost:5067/Common/File_Method/File_Ops",
+                payload: JSON.stringify({
+                    command: "rename",
+                    operation: {
+                        sourcePath: "\\\\path\\to\\oldname.txt",
+                        newName: "newname.txt"
+                    }
+                }, null, 2)
+            },
+            file_create_dir: {
+                url: "http://localhost:5067/Common/File_Method/File_Ops",
+                payload: JSON.stringify({
+                    command: "createdirectory",
+                    operation: {
+                        sourcePath: "\\\\path\\to\\new_directory"
+                    }
+                }, null, 2)
+            },
+            upload: {
+                url: "http://localhost:5067/Common/File_Method/Set",
+                payload: JSON.stringify({
+                    "appName": "1",
+                    "saveMode": "Rename",
+                    "fileName": "",
+                    "fileSize": 0
+                }, null, 2)
+            },
+            download: {
+                url: "http://localhost:5067/Common/File_Method/Get",
+                payload: JSON.stringify({
+                    "filePath": "\\\\10.201.21.10\\v1tstprodlog$\\99_Other\\Gitea\\catppuccin-gitea.tar.gz",
+                    "fileName": "catppuccin-gitea.tar.gz"
+                }, null, 2)
+            }
+        };
+
+        const log = (id, content) => {
+            const el = document.getElementById(id);
+            el.textContent = content;
+            el.parentElement.style.display = 'block';
+        };
+
+        const hideLogs = () => {
+            document.getElementById('request-log').style.display = 'none';
+            document.getElementById('response-log').style.display = 'none';
+            document.getElementById('error-log').style.display = 'none';
+            document.getElementById('download-log').style.display = 'none';
+            document.getElementById('download-link-container').innerHTML = '';
+        };
+
+        function updateUIForEndpointType(type) {
+            apiUrlInput.value = defaultPayloads[type].url;
+            payloadInput.value = defaultPayloads[type].payload;
+            payloadInput.labels[0].textContent = type === 'upload' ? 'Request Metadata (JSON for "Set-File-Info" header):' : 'Request Payload (JSON):';
+            fileInputContainer.style.display = type === 'upload' ? 'block' : 'none';
+        }
+
+        endpointTypeSelect.addEventListener('change', (e) => {
+            updateUIForEndpointType(e.target.value);
+        });
+
+        sendRequestBtn.addEventListener('click', async () => {
+            hideLogs();
+            sendRequestBtn.disabled = true;
+            sendRequestBtn.textContent = 'Sending...';
+
+            const endpointType = endpointTypeSelect.value;
+
+            try {
+                // 1. Generate crypto materials
+                const { kxi, key, iv } = await generateRandomKxi();
+                log('req-kxi', kxi);
+
+                // 2. Prepare and encrypt payload/metadata
+                let payloadString = payloadInput.value;
+                const file = (endpointType === 'upload') ? fileInput.files[0] : null;
+
+                if (endpointType === 'upload') {
+                    if (!file) {
+                        throw new Error("Please select a file to upload.");
+                    }
+                    const payload = JSON.parse(payloadString);
+                    payload.fileName = file.name;
+                    payload.fileSize = file.size;
+                    payloadString = JSON.stringify(payload);
+                    payloadInput.value = JSON.stringify(payload, null, 2); // Update UI
+                }
+
+                const encryptedMetadata = await encryptData(payloadString, key, iv);
+                log('req-body', encryptedMetadata);
+
+                // 3. Prepare fetch options
+                const apiUrl = apiUrlInput.value;
+                const headers = { 'kxi': kxi };
+                let body;
+
+                if (endpointType === 'upload') {
+                    // Add the encrypted metadata to the 'Set-File-Info' header
+                    headers['Set-File-Info'] = encryptedMetadata;
+
+                    const formData = new FormData();
+                    // The form data now only contains the file
+                    formData.append('file', file);
+                    body = formData;
+                    // For FormData, browser sets Content-Type. Don't set it manually.
+                } else {
+                    headers['Content-Type'] = 'text/plain';
+                    body = encryptedMetadata;
+                }
+
+                // 4. Send API Request
+                const response = await fetch(apiUrl, { method: 'POST', headers, body });
+                log('res-status', `${response.status} ${response.statusText}`);
+                document.getElementById('response-log').style.display = 'block';
+
+                const responseKxi = response.headers.get('kxi');
+
+                // 5. Process response body
+                if (responseKxi) {
+                    log('res-kxi', responseKxi);
+                    const responseText = await response.text();
+                    log('res-body-encrypted', responseText);
+
+                    try {
+                        const [respKeyB85, respIvB85] = responseKxi.split(":");
+                        const respKey = base85.decode(respKeyB85);
+                        const respIv = base85.decode(respIvB85);
+                        const decrypted = await decryptData(responseText, respKey, respIv);
+
+                        const decryptedJson = JSON.parse(decrypted);
+                        const prettyJson = JSON.stringify(decryptedJson, null, 2);
+                        log('res-body-decrypted', prettyJson);
+
+                        // Check for application-level errors inside the decrypted payload
+                        if (decryptedJson.code < 200 || decryptedJson.code >= 300) {
+                            const appError = `Application Error (Code: ${decryptedJson.code}): ${decryptedJson.message}`;
+                            log('error-content', `${appError}\n\nFull Decrypted Response:\n${prettyJson}`);
+                            document.getElementById('error-log').style.display = 'block';
+                        }
+
+                    } catch (decryptionError) {
+                        log('error-content', `Failed to decrypt response body: ${decryptionError.message}`);
+                        document.getElementById('error-log').style.display = 'block';
+                    }
+                } else if (endpointType === 'download' && response.ok) {
+                    document.getElementById('download-log').style.display = 'block';
+                    log('download-status', 'Response received. Creating download link...');
+
+                    const blob = await response.blob();
+                    const contentDisposition = response.headers.get('content-disposition');
+                    let filename = 'downloaded-file';
+
+                    if (contentDisposition) {
+                        const match = contentDisposition.match(/filename="?([^"]+)"?/);
+                        if (match) filename = match[1];
+                    }
+
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'block';
+                    a.href = url;
+                    a.download = filename;
+                    a.textContent = `Click to download ${filename}`;
+                    document.getElementById('download-link-container').appendChild(a);
+                } else {
+                    // Handle non-encrypted error responses
+                    let errorBody = await response.text();
+                    try {
+                        errorBody = JSON.stringify(JSON.parse(errorBody), null, 2); // Prettify if JSON
+                    } catch {}
+                    const httpError = `HTTP Error: ${response.status} ${response.statusText}\n\nResponse Body:\n${errorBody}`;
+                    log('error-content', httpError);
+                    document.getElementById('error-log').style.display = 'block';
+                }
+
+            } catch (error) {
+                console.error('Request failed:', error);
+                log('error-content', error.stack);
+                document.getElementById('error-log').style.display = 'block';
+            } finally {
+                sendRequestBtn.disabled = false;
+                sendRequestBtn.textContent = 'Send Request';
+            }
+        });
+        // Initial UI setup
+        updateUIForEndpointType(endpointTypeSelect.value);
+    </script>
+</body>
+</html>

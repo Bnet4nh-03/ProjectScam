@@ -1,0 +1,2 @@
+latest=2025022401
+update_changelog=CimitarAdmin: Fix error email auto sending<br />

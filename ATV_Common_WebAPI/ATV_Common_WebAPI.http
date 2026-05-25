@@ -1,0 +1,6 @@
+@ATV_Common_WebAPI_HostAddress = http://localhost:5067
+
+GET {{ATV_Common_WebAPI_HostAddress}}/ATV_CIMitar_Launcher/check_version/
+Accept: application/json
+
+###

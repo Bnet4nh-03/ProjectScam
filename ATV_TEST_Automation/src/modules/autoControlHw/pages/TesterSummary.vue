@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, inject, watch } from 'vue';
+import { ref, onMounted, inject, watch, onUnmounted } from 'vue';
 import TesterSummaryService from '../services/TesterSummaryService';
 import MultiSelect from 'primevue/multiselect';
 import FloatLabel from 'primevue/floatlabel';
@@ -86,10 +86,25 @@ onMounted(async () => {
         // 2. Load toàn bộ dữ liệu lần đầu tiên
         await loadData();
 
+        
+        const el = document.querySelector('.layout-main');
+        if (el) {
+            el.classList.add('full-width-mode');
+        }
+
+
     } catch (error) {
         console.error('Initial load failed', error);
     } finally {
         isLoading.value = false;
+    }
+});
+
+
+onUnmounted(() => {
+    const el = document.querySelector('.layout-main');
+    if (el) {
+        el.classList.remove('full-width-mode');
     }
 });
 
@@ -477,6 +492,7 @@ const clearFilters = () => {
 </template>
 
 <style scoped>
+
 .vertical-text {
     writing-mode: vertical-rl;
     transform: rotate(180deg);
@@ -512,4 +528,18 @@ const clearFilters = () => {
 .incompatible-cell {
     background: repeating-linear-gradient(45deg, #f1f5f9, #f1f5f9 4px, #e2e8f0 4px, #e2e8f0 8px);
 }
+</style>
+
+<style>
+
+@media screen and (min-width: 1960px) {
+  .layout-main.full-width-mode {
+      width: 100vw !important;
+      max-width: 100vw !important;
+      margin: 0 !important;
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+  }
+}
+
 </style>
