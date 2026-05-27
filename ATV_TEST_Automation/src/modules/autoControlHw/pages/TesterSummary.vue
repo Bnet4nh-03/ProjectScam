@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, inject, watch, onUnmounted } from 'vue';
+import { ref, onMounted, inject, watch, onUnmounted, computed } from 'vue';
 import TesterSummaryService from '../services/TesterSummaryService';
 import MultiSelect from 'primevue/multiselect';
 import FloatLabel from 'primevue/floatlabel';
@@ -28,7 +28,8 @@ const filters = ref({
     customer: [],
     device: [],
     package: [],
-    tester: []
+    tester: [],
+    keyword: ''
 });
 
 // Fetch Filter Options (Cascading)
@@ -145,6 +146,70 @@ const loadData = async () => {
         isLoading.value = false;
     }
 };
+
+const filteredModels = computed(() => {
+    if (!filters.value.keyword) return models.value;
+
+    const keyword = filters.value.keyword.toLowerCase();
+
+    return models.value
+        .map(model => {
+
+            const packages = model.packages.filter(pkg => {
+
+                // check package name
+                if (pkg.name.toLowerCase().includes(keyword)) return true;
+
+                // check rows (ANY value match)
+                return pkg.rows.some(row =>
+                    row.values.some(val =>
+                        val && val.toLowerCase().includes(keyword)
+                    )
+                );
+            });
+
+            return packages.length
+                ? { ...model, packages }
+                : null;
+        })
+        .filter(Boolean);
+});
+
+const filteredActiveConfigs = computed(() => {
+    if (!filters.value.keyword) return activeConfigsByPackage.value;
+
+    const keyword = filters.value.keyword.toLowerCase();
+
+    return activeConfigsByPackage.value.filter(pkg => {
+
+        if (pkg.name.toLowerCase().includes(keyword)) return true;
+
+        return pkg.rows.some(row =>
+            row.values.some(val =>
+                val && val.toLowerCase().includes(keyword)
+            )
+        );
+    });
+});
+
+const filteredTesters = computed(() => {
+    if (!filters.value.keyword) return testers.value;
+
+    const keyword = filters.value.keyword.toLowerCase();
+
+    return testers.value.filter(tester => {
+        const colIndex = testers.value.indexOf(tester);
+
+        return filteredModels.value.some(model =>
+            model.packages.some(pkg =>
+                pkg.rows.some(row => {
+                    const val = row.values[colIndex];
+                    return val && val.toLowerCase().includes(keyword);
+                })
+            )
+        );
+    });
+});
 
 const getParameterIcon = (label) => {
     switch (label) {
@@ -310,7 +375,8 @@ const clearFilters = () => {
         customer: [],
         device: [],
         package: [],
-        tester: []
+        tester: [],
+        keyword: ''
     };
 };
 </script>
@@ -348,6 +414,17 @@ const clearFilters = () => {
                     <MultiSelect v-model="filters.tester" id="tester" filter :options="allTesters" optionLabel="name"
                         class="w-full !h-10 flex items-center shadow-sm rounded-md" :maxSelectedLabels="1" display="chip" />
                     <label for="tester" class="text-xs font-semibold">Tester IDs</label>
+                </FloatLabel>
+            </div>
+
+            <div class="w-64">
+                <FloatLabel variant="on">
+                    <InputText 
+                        v-model="filters.keyword" 
+                        id="keyword" 
+                        class="w-full !h-10 shadow-sm rounded-md"
+                    />
+                    <label for="keyword" class="text-xs font-semibold">Keyword</label>
                 </FloatLabel>
             </div>
 
@@ -393,7 +470,7 @@ const clearFilters = () => {
                         <th class="w-40 sticky left-10 z-40 bg-surface-container-high border-b border-outline-variant px-3 py-1 text-primary font-black uppercase tracking-widest text-[9px] text-center border-l border-outline-variant/30">
                             PARAMETER
                         </th>
-                        <th v-for="tester in testers" :key="tester"
+                        <th v-for="tester in filteredTesters" :key="tester"
                             class="px-3 py-1 border-b border-outline-variant text-on-surface font-black !text-center uppercase tracking-widest text-[10px] min-w-[130px] border-l border-outline-variant/30">
                             {{ tester }}
                         </th>
@@ -408,7 +485,7 @@ const clearFilters = () => {
                             </div>
                         </td>
                     </tr>
-                    <template v-for="pkg in activeConfigsByPackage" :key="pkg.name">
+                    <template v-for="pkg in filteredActiveConfigs" :key="pkg.name">
                         <tr v-for="(row, rowIndex) in pkg.rows" :key="rowIndex" class="hover:bg-primary/5 transition-colors">
                             <td v-if="rowIndex === 0" :rowspan="pkg.rows.length"
                                 class="sticky left-0 z-20 bg-surface-container-highest border-b border-outline-variant text-center !p-0 vertical-text">
@@ -422,10 +499,20 @@ const clearFilters = () => {
                                     {{ row.label }}
                                 </div>
                             </td>
-                            <td v-for="(val, colIndex) in row.values" :key="colIndex"
-                                :class="['border-b border-outline-variant text-center font-mono py-1 px-1 border-l border-outline-variant/10', 'status-' + row.alerts[colIndex]]">
-                                <span class="text-[11px] font-black truncate max-w-[120px] inline-block align-middle" :title="val">
-                                    {{ (row.alerts[colIndex] === 'unsupported') ? '---' : (val || '---') }}
+                            <td v-for="(tester, colIndex) in filteredTesters" :key="colIndex"
+                                :class="[
+                                    'border-b border-outline-variant text-center font-mono py-1 px-1 border-l border-outline-variant/10',
+                                    'status-' + row.alerts[testers.indexOf(tester)]
+                                ]">
+
+                                <span>
+                                    {{
+                                        (() => {
+                                            const idx = testers.indexOf(tester);
+                                            const val = row.values[idx];
+                                            return (row.alerts[idx] === 'unsupported') ? '---' : (val || '---');
+                                        })()
+                                    }}
                                 </span>
                             </td>
                         </tr>
@@ -440,7 +527,7 @@ const clearFilters = () => {
                         </td>
                     </tr>
 
-                    <template v-for="model in models" :key="model.name">
+                    <template v-for="model in filteredModels" :key="model.name">
                         <!-- Model Header -->
                         <tr class="bg-slate-50/50 border-b border-slate-200 cursor-pointer" @click="model.expanded = !model.expanded">
                             <td :colspan="testers.length + 2" class="sticky left-0 z-20 px-4 py-1">
@@ -471,10 +558,23 @@ const clearFilters = () => {
                                         {{ row.label }}
                                     </div>
                                 </td>
-                                <td v-for="(val, vIdx) in row.values" :key="vIdx"
-                                    :class="['text-center font-mono py-1 px-1 border-r border-slate-100', 
-                                             val === 'Unsupported' ? 'incompatible-cell text-slate-300' : 'text-slate-600 font-semibold bg-white/30']">
-                                    {{ val === 'Unsupported' ? '---' : val }}
+                                <td v-for="(tester, colIndex) in filteredTesters" :key="colIndex"
+                                    :class="[
+                                        'text-center font-mono py-1 px-1 border-r border-slate-100',
+                                        (() => {
+                                            const val = row.values[testers.indexOf(tester)];
+                                            return val === 'Unsupported'
+                                                ? 'incompatible-cell text-slate-300'
+                                                : 'text-slate-600 font-semibold bg-white/30';
+                                        })()
+                                    ]">
+
+                                    {{
+                                        (() => {
+                                            const val = row.values[testers.indexOf(tester)];
+                                            return val === 'Unsupported' ? '---' : val;
+                                        })()
+                                    }}
                                 </td>
                             </tr>
                         </template>
@@ -534,11 +634,8 @@ const clearFilters = () => {
 
 @media screen and (min-width: 1960px) {
   .layout-main.full-width-mode {
-      width: 100vw !important;
-      max-width: 100vw !important;
-      margin: 0 !important;
-      padding-left: 0 !important;
-      padding-right: 0 !important;
+      width: 98vw !important;
+      max-width: 98vw !important;
   }
 }
 

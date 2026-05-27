@@ -309,7 +309,6 @@ const TABLE_SCHEMA = computed(() => ({
       optionValue: "hantypeno",
       required: true,
     },
-    { label: "Handler Host Name", field: "hanhostnm", mode: "input", required: true },
     { label: "rfiddrm", field: "rfiddrm", mode: "input", required: true },
     { label: "Serial no", field: "SerialNo", mode: "input", required: true },
     { label: "Owner", field: "owner", mode: "input", required: true },
@@ -342,29 +341,6 @@ const TABLE_SCHEMA = computed(() => ({
   
   testerEnv: [
     { label: "No", field: "no", mode: "view" },
-    // {
-    //   label: "Handler Company Name",
-    //   field: "handlersbycompany",
-    //   mode: "select",
-    //   options: handlerCompanyListData.value,
-    //   optionLabel: "hancompnm",
-    //   optionValue: "hancompno",
-    //   required: true,
-    // },
-
-    // {
-    //   label: "Handler Name",
-    //   field: "handlername",
-    //   mode: "select",
-    //   getOptions: (row) => {
-    //     if (!row.handlersbycompany) return [];
-    //     return testerEnvDataTable.value.handlersByCompany[row.handlersbycompany] ?? [];
-    //   },
-    //   optionLabel: "handlername",
-    //   optionValue: "handlerno",
-    //   required: true,
-    // },
-
     {
       label: "Platform Type Name",
       field: "testersbyplatformtype",
@@ -440,7 +416,10 @@ const TABLE_SCHEMA = computed(() => ({
     {
       label: "Handler ID",
       field: "handlerid",
-      mode: "input",
+      mode: "select",
+      options: handlerListData.value,
+      optionLabel: "rfidnm",
+      optionValue: "handlerid",
     },
 
     { label: "Status", field: "status", type: "status", mode: "status" }
@@ -681,7 +660,7 @@ async function handleSubmit(rawTableData, type) {
         "TestDB..USP_RegisterMachine_InsertHandler",
         {
           "@jsonParam": JSON.stringify({
-            hanhostnm: row.hanhostnm,
+            hanhostnm: row.rfiddrm,
             hantypeno: row.hantypeno,
             rfidnm: row.rfiddrm,
             serialno: row.SerialNo,
@@ -699,7 +678,7 @@ async function handleSubmit(rawTableData, type) {
       if (result?.Status) row.status = result.Status;
     }
   }
-
+  
 
   if (errors.length) {
     gFunc.ShowMessage(`Có (${errors.length}) lỗi:\n${errors.join('\n')}`, "error", "", 3000);

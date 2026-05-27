@@ -3158,6 +3158,9 @@ if { $g_hostname == "VNV1OFLTP00488" } {
 if { $g_hostname == "VNV1OFLTP00285" } {
     set g_hostname  "test"
 }
+if { $g_hostname == "VNV1OFLTP00694" } {
+    set g_hostname  "test"
+}
 ### set os
 global tcl_platform
 global g_os
@@ -3215,9 +3218,13 @@ FUNC_LOAD_LIBRARY
 ###
 FUNC_GET_DESCRIPTION
 
+## Check tester id with g_hostname
 FUNC_UPDATE_IP
+## Check tester id with g_hostname and update os
 FUNC_UPDATE_OS
+## Check tester id with g_hostname and update id (ex: uid=1000(user) gid=1000(user) groups=1000(user))
 FUNC_UPDATE_ID
+## Check tester id with g_hostname and update scops version
 FUNC_UPDATE_SCOPSVERSION
 
 ###

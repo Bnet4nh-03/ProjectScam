@@ -67,7 +67,8 @@ const model = ref([
                     {
                         label: 'REGISTRATION MACHINE', icon: '', to: '',
                         items: [
-                            { label: 'Register', icon: '', to: '/register-machine/register', permissions: ['T_RM_SRR_PM']  },
+                            { label: 'Register Machine', icon: '', to: '/register-machine/register', permissions: ['T_RM_SRR_PM']  },
+                            { label: 'Manager Machine', icon: '', to: '/register-machine/manager', permissions: ['T_RM_SRR_PM']  }
                         ]
                     },
                 ]
