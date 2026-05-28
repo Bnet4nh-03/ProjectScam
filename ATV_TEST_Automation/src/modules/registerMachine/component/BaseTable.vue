@@ -93,6 +93,42 @@ function onSelectChange(row, col, rowIndex) {
   });
 }
 
+function onInputChange(event, row, col, rowIndex) {
+  const value = event.target.value;
+
+  row[col.field] = value;  
+
+  emit('cell-select-change', {  
+    row,
+    field: col.field,
+    value,
+    rowIndex
+  });
+}
+
+function getSelectValue(row, col) {
+  const value = row[col.field];
+
+  if (value !== undefined && value !== null && value !== "") {
+    return value;
+  }
+
+  return col.defaultSelectValue ?? "";
+}
+
+function getInputValue(row, col) {
+  const value = row[col.field];
+
+  if (!value && col.defaultInputValue !== undefined) {
+    row[col.field] = col.defaultInputValue;
+  }
+
+  if (value !== undefined && value !== null && value !== "") {
+    return value;
+  }
+
+  return col.defaultInputValue ?? "";
+}
 
 const processedData = computed(() => {
   let data = [...props.rowData];
@@ -232,14 +268,15 @@ function handleInputPaste(event, startRowIndex, startColIndex) {
             v-else-if="col.mode === 'input'"
             maxlength="30"
             class="cell-input"
-            v-model="slotProps.data[col.field]"
+            :value="getInputValue(slotProps.data, col)"
+            @input="onInputChange($event, slotProps.data, col, slotProps.index)"
             @paste="handleInputPaste($event, slotProps.index, index)"
           />
 
           <!--select-->
           <select 
             v-else-if="col.mode === 'select'" 
-            v-model="slotProps.data[col.field]" 
+            :value="getSelectValue(slotProps.data, col)"
             class="cell-select" 
             @change="onSelectChange(slotProps.data, col, slotProps.index)"
           >

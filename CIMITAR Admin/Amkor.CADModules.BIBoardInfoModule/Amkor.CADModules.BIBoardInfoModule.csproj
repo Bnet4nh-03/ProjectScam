@@ -1,0 +1,230 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{630D445A-F3CB-48C7-A409-1854B25CBCA8}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Amkor.CADModules.BIBoardInfoModule</RootNamespace>
+    <AssemblyName>Amkor.CADModules.BIBoardInfoModule</AssemblyName>
+    <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <NoStdLib>true</NoStdLib>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <NoStdLib>true</NoStdLib>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="ATDFW.Classes">
+      <HintPath>..\..\ATV_CIMitar_Launcher\CIMitar\CIMitarAdmin_ATV\Modules\ATDFW.Classes.dll</HintPath>
+    </Reference>
+    <Reference Include="ATDFW.Controls.BaseWinForm">
+      <HintPath>..\..\ATV_CIMitar_Launcher\CIMitar\CIMitarAdmin_ATV\Modules\ATDFW.Controls.BaseWinForm.dll</HintPath>
+    </Reference>
+    <Reference Include="ColorProgressBar">
+      <HintPath>..\..\ATV_CIMitar_Launcher\CIMitar\CIMitarAdmin_ATV\Modules\ColorProgressBar.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="SourceGrid">
+      <HintPath>..\..\ATV_CIMitar_Launcher\CIMitar\CIMitarAdmin_ATV\Modules\SourceGrid.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.ServiceModel" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Windows.Forms.DataVisualization" />
+  </ItemGroup>
+  <ItemGroup>
+    <AppDesigner Include="Properties\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="AlteraSocketView\View\BarPrograss.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="AlteraSocketView\View\BarPrograss.Designer.cs">
+      <DependentUpon>BarPrograss.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Amkor\CADModules\BIBoardInfoModule\BIBoardInfoModule.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Amkor\CADModules\BIBoardInfoModule\BIBoardInfoModule.Designer.cs">
+      <DependentUpon>BIBoardInfoModule.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Amkor\CADModules\BIBoardInfoModule\CIMitarAdminWS\CIMitarWSSoap.cs" />
+    <Compile Include="Amkor\CADModules\BIBoardInfoModule\CIMitarAdminWS\CIMitarWSSoapChannel.cs" />
+    <Compile Include="Amkor\CADModules\BIBoardInfoModule\CIMitarAdminWS\CIMitarWSSoapClient.cs" />
+    <Compile Include="Amkor\CADModules\BIBoardInfoModule\Class\CGetData.cs" />
+    <Compile Include="Amkor\CADModules\BIBoardInfoModule\ModuleExecutor.cs" />
+    <Compile Include="Amkor\CADModules\BIBoardInfoModule\Program.cs" />
+    <Compile Include="Amkor\CADModules\BIBoardInfoModule\Properties\Resources.cs" />
+    <Compile Include="Amkor\CADModules\BIBoardInfoModule\Properties\Settings.Designer.cs">
+      <DependentUpon>Settings.settings</DependentUpon>
+      <AutoGen>True</AutoGen>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+    </Compile>
+    <Compile Include="Amkor\CADModules\BIBoardInfoModule\SubForms\BIBoardInsert.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Amkor\CADModules\BIBoardInfoModule\SubForms\BIBoardInsert.Designer.cs">
+      <DependentUpon>BIBoardInsert.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Amkor\CADModules\BIBoardInfoModule\SubForms\BIBoardInsert_SelectOne.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Amkor\CADModules\BIBoardInfoModule\SubForms\BIBoardInsert_SelectOne.Designer.cs">
+      <DependentUpon>BIBoardInsert_SelectOne.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Amkor\CADModules\BIBoardInfoModule\SubForms\BIBoardPMList.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Amkor\CADModules\BIBoardInfoModule\SubForms\BIBoardPMList.Designer.cs">
+      <DependentUpon>BIBoardPMList.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Amkor\CADModules\BIBoardInfoModule\SubForms\BIBoardSocketInfo.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Amkor\CADModules\BIBoardInfoModule\SubForms\BIBoardSocketInfo.Designer.cs">
+      <DependentUpon>BIBoardSocketInfo.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Amkor\CADModules\BIBoardInfoModule\SubForms\CAddCategory.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Amkor\CADModules\BIBoardInfoModule\SubForms\CAddCategory.Designer.cs">
+      <DependentUpon>CAddCategory.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Amkor\CADModules\BIBoardInfoModule\SubForms\CheckBadgeNo.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Amkor\CADModules\BIBoardInfoModule\SubForms\CheckBadgeNo.Designer.cs">
+      <DependentUpon>CheckBadgeNo.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Amkor\CADModules\BIBoardInfoModule\SubForms\CheckSeriesEnable.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Amkor\CADModules\BIBoardInfoModule\SubForms\CheckSeriesEnable.Designer.cs">
+      <DependentUpon>CheckSeriesEnable.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Amkor\CADModules\BIBoardInfoModule\SubForms\SaveExcel_Sum.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Amkor\CADModules\BIBoardInfoModule\SubForms\SaveExcel_Sum.Designer.cs">
+      <DependentUpon>SaveExcel_Sum.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Amkor\CADModules\BIBoardInfoModule\SubForms\SocketPartChange.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Amkor\CADModules\BIBoardInfoModule\SubForms\SocketPartChange.Designer.cs">
+      <DependentUpon>SocketPartChange.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Amkor\CADModules\BIBoardInfoModule\SubForms\SocketPartChange_Insert.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Amkor\CADModules\BIBoardInfoModule\SubForms\SocketPartChange_Insert.Designer.cs">
+      <DependentUpon>SocketPartChange_Insert.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Amkor\CADModules\BIBoardInfoModule\SubForms\TabPages\Tab_Base.cs" />
+    <Compile Include="Amkor\CADModules\BIBoardInfoModule\SubForms\TabPages\Tab_PM.cs" />
+    <Compile Include="Amkor\CADModules\BIBoardInfoModule\SubForms\TabPages\Tab_Trend.cs" />
+    <Compile Include="Amkor\CADModules\BIBoardInfoModule\SubForms\TabPages\Tab_Unload.cs" />
+    <Compile Include="Amkor\CHModules\BIBoardInfoModule\SubForms\DateCond.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Amkor\CHModules\BIBoardInfoModule\SubForms\DateCond.Designer.cs">
+      <DependentUpon>DateCond.cs</DependentUpon>
+    </Compile>
+    <Compile Include="CommonLibrary\CSVControl.cs" />
+    <Compile Include="DATA\CBadSocketStatus.cs" />
+    <Compile Include="DATA\CBIBoardInfo.cs" />
+    <Compile Include="DATA\CBIBoardSocketInfo.cs" />
+    <Compile Include="DATA\CBinSort_BinningInfo.cs" />
+    <Compile Include="DATA\CBinSort_BinProperty.cs" />
+    <Compile Include="DATA\CBinSort_BoardInfo.cs" />
+    <Compile Include="DATA\CBinSort_FileInfo.cs" />
+    <Compile Include="DATA\CBinSort_SocketInfo.cs" />
+    <Compile Include="DATA\CEasyInputInfo.cs" />
+    <Compile Include="DATA\CGridIndex_BoardInfo.cs" />
+    <Compile Include="DATA\CGridIndex_BoardInfo_PMList.cs" />
+    <Compile Include="DATA\CGridIndex_BoardInfo_SocketPartChange.cs" />
+    <Compile Include="DATA\CGridIndex_BoardInfo_Warranty.cs" />
+    <Compile Include="DATA\CPmSumChartProperty.cs" />
+    <Compile Include="DATA\CSessionTotal.cs" />
+    <Compile Include="DATA\CSockBadInfo.cs" />
+    <Compile Include="DATA\CSocketPartChange.cs" />
+    <Compile Include="DATA\CSrsInfo.cs" />
+    <Compile Include="DATA\CTotalInfo.cs" />
+    <Compile Include="ETC\CheckBoxBackColorAlternate.cs" />
+    <Compile Include="ETC\CParsingGrid.cs" />
+    <Compile Include="ExcelControls\ExcelControl.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\AppEvents.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\AppEvents_Event.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\Application.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\Borders.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\Font.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\Range.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\Sheets.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\Workbook.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\WorkbookEvents.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\WorkbookEvents_Event.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\Workbooks.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\XlBorderWeight.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\XlHAlign.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\XlSaveAsAccessMode.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\_Application.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\_Workbook.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\_Worksheet.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="AlteraSocketView\View\BarPrograss.resources" />
+    <EmbeddedResource Include="Amkor\CADModules\BIBoardInfoModule\BIBoardInfoModule.resources" />
+    <EmbeddedResource Include="Amkor\CADModules\BIBoardInfoModule\Properties\Resources.resources" />
+    <EmbeddedResource Include="Amkor\CADModules\BIBoardInfoModule\SubForms\BIBoardInsert.resources" />
+    <EmbeddedResource Include="Amkor\CADModules\BIBoardInfoModule\SubForms\BIBoardInsert_SelectOne.resources" />
+    <EmbeddedResource Include="Amkor\CADModules\BIBoardInfoModule\SubForms\BIBoardPMList.resources" />
+    <EmbeddedResource Include="Amkor\CADModules\BIBoardInfoModule\SubForms\BIBoardSocketInfo.resources" />
+    <EmbeddedResource Include="Amkor\CADModules\BIBoardInfoModule\SubForms\CAddCategory.resources" />
+    <EmbeddedResource Include="Amkor\CADModules\BIBoardInfoModule\SubForms\CheckBadgeNo.resources" />
+    <EmbeddedResource Include="Amkor\CADModules\BIBoardInfoModule\SubForms\CheckSeriesEnable.resources" />
+    <EmbeddedResource Include="Amkor\CADModules\BIBoardInfoModule\SubForms\SaveExcel_Sum.resources" />
+    <EmbeddedResource Include="Amkor\CADModules\BIBoardInfoModule\SubForms\SocketPartChange.resources" />
+    <EmbeddedResource Include="Amkor\CADModules\BIBoardInfoModule\SubForms\SocketPartChange_Insert.resources" />
+    <EmbeddedResource Include="Amkor\CADModules\BIBoardInfoModule\SubForms\TabPages\Tab_Base.resources" />
+    <EmbeddedResource Include="Amkor\CADModules\BIBoardInfoModule\SubForms\TabPages\Tab_PM.resources" />
+    <EmbeddedResource Include="Amkor\CADModules\BIBoardInfoModule\SubForms\TabPages\Tab_Trend.resources" />
+    <EmbeddedResource Include="Amkor\CADModules\BIBoardInfoModule\SubForms\TabPages\Tab_Unload.resources" />
+    <EmbeddedResource Include="Amkor\CHModules\BIBoardInfoModule\SubForms\DateCond.resources" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\mscorlib\mscorlib.csproj">
+      <Project>{630d445a-f3cb-48c7-a409-1854b25cbcba}</Project>
+      <Name>mscorlib</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Amkor\CADModules\BIBoardInfoModule\Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

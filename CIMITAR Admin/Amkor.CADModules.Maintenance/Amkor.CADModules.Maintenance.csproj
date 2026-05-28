@@ -1,0 +1,421 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{630D445A-F3CB-48C7-A409-1854B25CBCB0}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Amkor.CADModules.Maintenance</RootNamespace>
+    <AssemblyName>Amkor.CADModules.Maintenance</AssemblyName>
+    <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <NoStdLib>true</NoStdLib>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <NoStdLib>true</NoStdLib>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="ATDFW.Base.FrameWork">
+      <HintPath>..\..\ATV_CIMitar_Launcher\CIMitar\CIMitarAdmin_ATV\Modules\ATDFW.Base.FrameWork.dll</HintPath>
+    </Reference>
+    <Reference Include="ATDFW.Classes">
+      <HintPath>..\..\ATV_CIMitar_Launcher\CIMitar\CIMitarAdmin_ATV\Modules\ATDFW.Classes.dll</HintPath>
+    </Reference>
+    <Reference Include="ATDFW.Compenents.EncryptionData" />
+    <Reference Include="ATDFW.Controls.BaseWinForm">
+      <HintPath>..\..\ATV_CIMitar_Launcher\CIMitar\CIMitarAdmin_ATV\Modules\ATDFW.Controls.BaseWinForm.dll</HintPath>
+    </Reference>
+    <Reference Include="ColorProgressBar">
+      <HintPath>..\..\ATV_CIMitar_Launcher\CIMitar\CIMitarAdmin_ATV\Modules\ColorProgressBar.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="Report_Email">
+      <HintPath>..\..\ATV_CIMitar_Launcher\CIMitar\CIMitarAdmin_ATV\Modules\Report_Email.dll</HintPath>
+    </Reference>
+    <Reference Include="SevenZipSharp">
+      <HintPath>..\..\ATV_CIMitar_Launcher\CIMitar\CIMitarAdmin_ATV\Modules\SevenZipSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="SourceGrid">
+      <HintPath>..\..\ATV_CIMitar_Launcher\CIMitar\CIMitarAdmin_ATV\Modules\SourceGrid.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+    <Reference Include="System.ServiceModel" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Windows.Forms.DataVisualization" />
+    <Reference Include="Telerik.WinControls">
+      <HintPath>..\..\ATV_CIMitar_Launcher\CIMitar\CIMitarAdmin_ATV\Modules\Telerik.WinControls.dll</HintPath>
+    </Reference>
+    <Reference Include="Telerik.WinControls.GridView">
+      <HintPath>..\..\ATV_CIMitar_Launcher\CIMitar\CIMitarAdmin_ATV\Modules\Telerik.WinControls.GridView.dll</HintPath>
+    </Reference>
+    <Reference Include="Telerik.WinControls.Themes.TelerikMetroBlue">
+      <HintPath>..\..\ATV_CIMitar_Launcher\CIMitar\CIMitarAdmin_ATV\Modules\Telerik.WinControls.Themes.TelerikMetroBlue.dll</HintPath>
+    </Reference>
+    <Reference Include="Telerik.WinControls.UI">
+      <HintPath>..\..\ATV_CIMitar_Launcher\CIMitar\CIMitarAdmin_ATV\Modules\Telerik.WinControls.UI.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <AppDesigner Include="Properties\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="CIMitarAdminWS\CIMitarWSSoap.cs" />
+    <Compile Include="CIMitarAdminWS\CIMitarWSSoapChannel.cs" />
+    <Compile Include="CIMitarAdminWS\CIMitarWSSoapClient.cs" />
+    <Compile Include="Class\cEmailInfo.cs" />
+    <Compile Include="Class\CIMitarLogin.cs" />
+    <Compile Include="Class\ExcelControl.cs" />
+    <Compile Include="Class\HistoryColumn.cs" />
+    <Compile Include="Class\HistoryPMColumn.cs" />
+    <Compile Include="Class\MachineDetailInfo.cs" />
+    <Compile Include="Class\MachineInfo.cs" />
+    <Compile Include="Class\MachineList.cs" />
+    <Compile Include="Class\MessageLanguage.cs" />
+    <Compile Include="Class\ReportList.cs" />
+    <Compile Include="Class\SearhColumn.cs" />
+    <Compile Include="Maintenance.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Maintenance.Designer.cs">
+      <DependentUpon>Maintenance.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Microsoft\Office\Interop\Excel\AppEvents.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\AppEvents_Event.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\Application.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\Borders.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\DocEvents.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\DocEvents_Event.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\Font.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\Interior.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\Range.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\Sheets.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\Window.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\Workbook.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\WorkbookEvents.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\WorkbookEvents_Event.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\Workbooks.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\Worksheet.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\XlBorderWeight.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\XlHAlign.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\XlSaveAsAccessMode.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\_Application.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\_Workbook.cs" />
+    <Compile Include="Microsoft\Office\Interop\Excel\_Worksheet.cs" />
+    <Compile Include="Microsoft\Office\Interop\Word\Application.cs" />
+    <Compile Include="Microsoft\Office\Interop\Word\ApplicationEvents4.cs" />
+    <Compile Include="Microsoft\Office\Interop\Word\ApplicationEvents4_Event.cs" />
+    <Compile Include="Microsoft\Office\Interop\Word\Document.cs" />
+    <Compile Include="Microsoft\Office\Interop\Word\DocumentEvents2.cs" />
+    <Compile Include="Microsoft\Office\Interop\Word\DocumentEvents2_Event.cs" />
+    <Compile Include="Microsoft\Office\Interop\Word\_Application.cs" />
+    <Compile Include="Microsoft\Office\Interop\Word\_Document.cs" />
+    <Compile Include="ModuleExecutor.cs" />
+    <Compile Include="Program.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Properties\Resources.cs" />
+    <Compile Include="Properties\Settings.cs" />
+    <Compile Include="Properties\Settings.Designer.cs">
+      <DependentUpon>Settings.settings</DependentUpon>
+      <AutoGen>True</AutoGen>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+    </Compile>
+    <Compile Include="SubForm\AdminSetting.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SubForm\AdminSetting.Designer.cs">
+      <DependentUpon>AdminSetting.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SubForm\BoardTrend.cs" />
+    <Compile Include="SubForm\cAction.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SubForm\cAction.Designer.cs">
+      <DependentUpon>cAction.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SubForm\cStatus.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SubForm\cStatus.Designer.cs">
+      <DependentUpon>cStatus.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SubForm\DoubleBufferTableLayoutPanel.cs" />
+    <Compile Include="SubForm\MaintActionControl\ActionBoardInformation.cs" />
+    <Compile Include="SubForm\MaintActionControl\ActionConfirmation.cs" />
+    <Compile Include="SubForm\MaintActionControl\ActionConfirmation2.cs" />
+    <Compile Include="SubForm\MaintActionControl\ActionContent.cs" />
+    <Compile Include="SubForm\MaintActionControl\ActionCustConfirmation.cs" />
+    <Compile Include="SubForm\MaintActionControl\ActionHCCStatus.cs" />
+    <Compile Include="SubForm\MaintActionControl\ActionInformation.cs" />
+    <Compile Include="SubForm\MaintActionControl\ActionOther.cs" />
+    <Compile Include="SubForm\MaintActionControl\ActionUserInformation.cs" />
+    <Compile Include="SubForm\MaintActionControl\ReportAttachmentFile.cs" />
+    <Compile Include="SubForm\MaintActionControl\ReportContentcs.cs" />
+    <Compile Include="SubForm\MaintActionControl\RequestInformation.cs" />
+    <Compile Include="SubForm\MaintActionControl\RequestUserInformation.cs" />
+    <Compile Include="SubForm\MaintReportControl\Emergency.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SubForm\MaintReportControl\Emergency.Designer.cs">
+      <DependentUpon>Emergency.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SubForm\PMAction.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SubForm\PMAction.Designer.cs">
+      <DependentUpon>PMAction.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SubForm\PMActionSubControl\Action\ActionAttach.cs" />
+    <Compile Include="SubForm\PMActionSubControl\Action\ActionConfirmation.cs" />
+    <Compile Include="SubForm\PMActionSubControl\Action\ActionContent.cs" />
+    <Compile Include="SubForm\PMActionSubControl\Action\ActionInformation.cs" />
+    <Compile Include="SubForm\PMActionSubControl\Action\ActionOther.cs" />
+    <Compile Include="SubForm\PMActionSubControl\Action\ActionUserInformation.cs" />
+    <Compile Include="SubForm\PMActionSubControl\Approval\ApContent.cs" />
+    <Compile Include="SubForm\PMActionSubControl\Approval\ApInformation.cs" />
+    <Compile Include="SubForm\PMActionSubControl\ApUserlInformation.cs" />
+    <Compile Include="SubForm\PMActionSubControl\Final\FinalContent.cs" />
+    <Compile Include="SubForm\PMActionSubControl\Final\FinalInformation.cs" />
+    <Compile Include="SubForm\PMActionSubControl\Final\FinalUserInformation.cs" />
+    <Compile Include="SubForm\PMActionSubControl\PMRequestContent.cs" />
+    <Compile Include="SubForm\PMActionSubControl\RequestAttach.cs" />
+    <Compile Include="SubForm\PMActionSubControl\RequestInformation.cs" />
+    <Compile Include="SubForm\PMActionSubControl\RequestUserInformation.cs" />
+    <Compile Include="SubForm\PMRequest.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SubForm\PMRequest.Designer.cs">
+      <DependentUpon>PMRequest.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SubForm\PMRequestSubControl\PMAttach.cs" />
+    <Compile Include="SubForm\PMRequestSubControl\PMContent.cs" />
+    <Compile Include="SubForm\PMRequestSubControl\PMInformation.cs" />
+    <Compile Include="SubForm\PMRequestSubControl\PMUserInformation.cs" />
+    <Compile Include="SubForm\Report.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SubForm\Report.Designer.cs">
+      <DependentUpon>Report.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SubForm\ReportSubControl\HCCInformation.cs" />
+    <Compile Include="SubForm\ReportSubControl\ReportAttach.cs" />
+    <Compile Include="SubForm\ReportSubControl\ReportBoardInformation.cs" />
+    <Compile Include="SubForm\ReportSubControl\ReportContent.cs" />
+    <Compile Include="SubForm\ReportSubControl\ReportInformation.cs" />
+    <Compile Include="SubForm\ReportSubControl\ReportUserInformation.cs" />
+    <Compile Include="SubForm\SearchControl\MaintSearchView.cs" />
+    <Compile Include="SubForm\SearchControl\PMSearchView.cs" />
+    <Compile Include="SubForm\search\SearchForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SubForm\search\SearchForm.Designer.cs">
+      <DependentUpon>SearchForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SubForm\SubControl\BarPrograss.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SubForm\SubControl\BarPrograss.Designer.cs">
+      <DependentUpon>BarPrograss.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SubForm\SubControl\BoardConfirmation.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SubForm\SubControl\BoardConfirmation.Designer.cs">
+      <DependentUpon>BoardConfirmation.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SubForm\SubControl\CancelForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SubForm\SubControl\CancelForm.Designer.cs">
+      <DependentUpon>CancelForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SubForm\SubControl\Confirmation.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SubForm\SubControl\Confirmation.Designer.cs">
+      <DependentUpon>Confirmation.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SubForm\SubControl\CVContent.cs" />
+    <Compile Include="SubForm\SubControl\DoubleBufferCheckBox.cs" />
+    <Compile Include="SubForm\SubControl\DoubleBufferPanel.cs" />
+    <Compile Include="SubForm\SubControl\DoubleBufferTableLayoutPanel.cs" />
+    <Compile Include="SubForm\SubControl\Export.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SubForm\SubControl\Export.Designer.cs">
+      <DependentUpon>Export.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SubForm\SubControl\GridView.cs" />
+    <Compile Include="SubForm\SubControl\HoldForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SubForm\SubControl\HoldForm.Designer.cs">
+      <DependentUpon>HoldForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SubForm\SubControl\HoldInfoForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SubForm\SubControl\HoldInfoForm.Designer.cs">
+      <DependentUpon>HoldInfoForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SubForm\SubControl\Login.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SubForm\SubControl\Login.Designer.cs">
+      <DependentUpon>Login.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SubForm\SubControl\MailForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SubForm\SubControl\MailForm.Designer.cs">
+      <DependentUpon>MailForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SubForm\SubControl\Notification.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SubForm\SubControl\Notification.Designer.cs">
+      <DependentUpon>Notification.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SubForm\SubControl\PartForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SubForm\SubControl\PartForm.Designer.cs">
+      <DependentUpon>PartForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SubForm\SubControl\SiteMapForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SubForm\SubControl\SiteMapForm.Designer.cs">
+      <DependentUpon>SiteMapForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SubForm\SubControl\SiteMapMultiSelectDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SubForm\SubControl\SiteMapMultiSelectDialog.Designer.cs">
+      <DependentUpon>SiteMapMultiSelectDialog.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SubForm\SubControl\SiteMapToolStripButton.cs" />
+    <Compile Include="SubForm\SubControl\SiteMapToolStripLabel.cs" />
+    <Compile Include="SubForm\SubControl\SiteMapToolStripTextBox.cs" />
+    <Compile Include="SubForm\TreeViewExtensions.cs" />
+    <Compile Include="SubForm\TrendForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SubForm\TrendForm.Designer.cs">
+      <DependentUpon>TrendForm.cs</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Maintenance.resources" />
+    <EmbeddedResource Include="Properties\Resources.resources" />
+    <EmbeddedResource Include="SubForm\AdminSetting.resources" />
+    <EmbeddedResource Include="SubForm\BoardTrend.resources" />
+    <EmbeddedResource Include="SubForm\cAction.resources" />
+    <EmbeddedResource Include="SubForm\cStatus.resources" />
+    <EmbeddedResource Include="SubForm\MaintActionControl\ActionBoardInformation.resources" />
+    <EmbeddedResource Include="SubForm\MaintActionControl\ActionConfirmation.resources" />
+    <EmbeddedResource Include="SubForm\MaintActionControl\ActionConfirmation2.resources" />
+    <EmbeddedResource Include="SubForm\MaintActionControl\ActionContent.resources" />
+    <EmbeddedResource Include="SubForm\MaintActionControl\ActionCustConfirmation.resources" />
+    <EmbeddedResource Include="SubForm\MaintActionControl\ActionHCCStatus.resources" />
+    <EmbeddedResource Include="SubForm\MaintActionControl\ActionInformation.resources" />
+    <EmbeddedResource Include="SubForm\MaintActionControl\ActionOther.resources" />
+    <EmbeddedResource Include="SubForm\MaintActionControl\ActionUserInformation.resources" />
+    <EmbeddedResource Include="SubForm\MaintActionControl\ReportAttachmentFile.resources" />
+    <EmbeddedResource Include="SubForm\MaintActionControl\ReportContentcs.resources" />
+    <EmbeddedResource Include="SubForm\MaintActionControl\RequestInformation.resources" />
+    <EmbeddedResource Include="SubForm\MaintActionControl\RequestUserInformation.resources" />
+    <EmbeddedResource Include="SubForm\MaintReportControl\Emergency.resources" />
+    <EmbeddedResource Include="SubForm\PMAction.resources" />
+    <EmbeddedResource Include="SubForm\PMActionSubControl\Action\ActionAttach.resources" />
+    <EmbeddedResource Include="SubForm\PMActionSubControl\Action\ActionConfirmation.resources" />
+    <EmbeddedResource Include="SubForm\PMActionSubControl\Action\ActionContent.resources" />
+    <EmbeddedResource Include="SubForm\PMActionSubControl\Action\ActionInformation.resources" />
+    <EmbeddedResource Include="SubForm\PMActionSubControl\Action\ActionOther.resources" />
+    <EmbeddedResource Include="SubForm\PMActionSubControl\Action\ActionUserInformation.resources" />
+    <EmbeddedResource Include="SubForm\PMActionSubControl\Approval\ApContent.resources" />
+    <EmbeddedResource Include="SubForm\PMActionSubControl\Approval\ApInformation.resources" />
+    <EmbeddedResource Include="SubForm\PMActionSubControl\ApUserlInformation.resources" />
+    <EmbeddedResource Include="SubForm\PMActionSubControl\Final\FinalContent.resources" />
+    <EmbeddedResource Include="SubForm\PMActionSubControl\Final\FinalInformation.resources" />
+    <EmbeddedResource Include="SubForm\PMActionSubControl\Final\FinalUserInformation.resources" />
+    <EmbeddedResource Include="SubForm\PMActionSubControl\PMRequestContent.resources" />
+    <EmbeddedResource Include="SubForm\PMActionSubControl\RequestAttach.resources" />
+    <EmbeddedResource Include="SubForm\PMActionSubControl\RequestInformation.resources" />
+    <EmbeddedResource Include="SubForm\PMActionSubControl\RequestUserInformation.resources" />
+    <EmbeddedResource Include="SubForm\PMRequest.resources" />
+    <EmbeddedResource Include="SubForm\PMRequestSubControl\PMAttach.resources" />
+    <EmbeddedResource Include="SubForm\PMRequestSubControl\PMContent.resources" />
+    <EmbeddedResource Include="SubForm\PMRequestSubControl\PMInformation.resources" />
+    <EmbeddedResource Include="SubForm\PMRequestSubControl\PMUserInformation.resources" />
+    <EmbeddedResource Include="SubForm\Report.resources" />
+    <EmbeddedResource Include="SubForm\ReportSubControl\HCCInformation.resources" />
+    <EmbeddedResource Include="SubForm\ReportSubControl\ReportAttach.resources" />
+    <EmbeddedResource Include="SubForm\ReportSubControl\ReportBoardInformation.resources" />
+    <EmbeddedResource Include="SubForm\ReportSubControl\ReportContent.resources" />
+    <EmbeddedResource Include="SubForm\ReportSubControl\ReportInformation.resources" />
+    <EmbeddedResource Include="SubForm\ReportSubControl\ReportUserInformation.resources" />
+    <EmbeddedResource Include="SubForm\SearchControl\MaintSearchView.resources" />
+    <EmbeddedResource Include="SubForm\SearchControl\PMSearchView.resources" />
+    <EmbeddedResource Include="SubForm\search\SearchForm.resources" />
+    <EmbeddedResource Include="SubForm\SubControl\BarPrograss.resources" />
+    <EmbeddedResource Include="SubForm\SubControl\BoardConfirmation.resources" />
+    <EmbeddedResource Include="SubForm\SubControl\CancelForm.resources" />
+    <EmbeddedResource Include="SubForm\SubControl\Confirmation.resources" />
+    <EmbeddedResource Include="SubForm\SubControl\CVContent.resources" />
+    <EmbeddedResource Include="SubForm\SubControl\Export.resources" />
+    <EmbeddedResource Include="SubForm\SubControl\GridView.resources" />
+    <EmbeddedResource Include="SubForm\SubControl\HoldForm.resources" />
+    <EmbeddedResource Include="SubForm\SubControl\HoldInfoForm.resources" />
+    <EmbeddedResource Include="SubForm\SubControl\Login.resources" />
+    <EmbeddedResource Include="SubForm\SubControl\MailForm.resources" />
+    <EmbeddedResource Include="SubForm\SubControl\Notification.resources" />
+    <EmbeddedResource Include="SubForm\SubControl\PartForm.resources" />
+    <EmbeddedResource Include="SubForm\SubControl\SiteMapForm.resources" />
+    <EmbeddedResource Include="SubForm\SubControl\SiteMapMultiSelectDialog.resources" />
+    <EmbeddedResource Include="SubForm\TrendForm.resources" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Amkor.CADModules.Maintenance.GrobalConst\Amkor.CADModules.Maintenance.GrobalConst.csproj">
+      <Project>{630d445a-f3cb-48c7-a409-1854b25cbcb1}</Project>
+      <Name>Amkor.CADModules.Maintenance.GrobalConst</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Amkor.CADModules.Maintenance.RTFConverter\Amkor.CADModules.Maintenance.RTFConverter.csproj">
+      <Project>{630d445a-f3cb-48c7-a409-1854b25cbcb2}</Project>
+      <Name>Amkor.CADModules.Maintenance.RTFConverter</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\mscorlib\mscorlib.csproj">
+      <Project>{630d445a-f3cb-48c7-a409-1854b25cbcba}</Project>
+      <Name>mscorlib</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="app.config" />
+    <None Include="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

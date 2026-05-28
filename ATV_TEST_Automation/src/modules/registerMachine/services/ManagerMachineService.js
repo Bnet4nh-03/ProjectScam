@@ -13,10 +13,13 @@ export default class ManagerMachineService {
                 tc.menucode,
                 tc.handlerid,
                 tc.language,
-                tc.use_tpa
+                tc.use_tpa,
+                h.rfidnm
             FROM [CIMitar_Master].[dbo].[Tester] t
             LEFT JOIN [CIMitar_Master].[dbo].[TesterEnv] tc
                 ON t.testerid = tc.testerid
+            LEFT JOIN [CIMitar_Master].[dbo].[Handler] h
+                ON tc.handlerid = h.handlerid
             WHERE NOT EXISTS (
                 SELECT 1
                 FROM [CIMitar_Log].[dbo].[RfidHistory] rh

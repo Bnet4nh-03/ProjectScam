@@ -1,0 +1,289 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{630D445A-F3CB-48C7-A409-1854B25CBCAA}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Amkor.CADModules.CarrierModule</RootNamespace>
+    <AssemblyName>Amkor.CADModules.CarrierModule</AssemblyName>
+    <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <NoStdLib>true</NoStdLib>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <NoStdLib>true</NoStdLib>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="ATDFW.Classes">
+      <HintPath>..\..\ATV_CIMitar_Launcher\CIMitar\CIMitarAdmin_ATV\Modules\ATDFW.Classes.dll</HintPath>
+    </Reference>
+    <Reference Include="ATDFW.Controls.BaseWinForm">
+      <HintPath>..\..\ATV_CIMitar_Launcher\CIMitar\CIMitarAdmin_ATV\Modules\ATDFW.Controls.BaseWinForm.dll</HintPath>
+    </Reference>
+    <Reference Include="ColorProgressBar">
+      <HintPath>..\..\ATV_CIMitar_Launcher\CIMitar\CIMitarAdmin_ATV\Modules\ColorProgressBar.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Office.Interop.Excel" />
+    <Reference Include="SourceGrid">
+      <HintPath>..\..\ATV_CIMitar_Launcher\CIMitar\CIMitarAdmin_ATV\Modules\SourceGrid.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.ServiceModel" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Windows.Forms.DataVisualization" />
+    <Reference Include="System.Xml" />
+    <Reference Include="Telerik.WinControls">
+      <HintPath>..\..\ATV_CIMitar_Launcher\CIMitar\CIMitarAdmin_ATV\Modules\Telerik.WinControls.dll</HintPath>
+    </Reference>
+    <Reference Include="Telerik.WinControls.GridView">
+      <HintPath>..\..\ATV_CIMitar_Launcher\CIMitar\CIMitarAdmin_ATV\Modules\Telerik.WinControls.GridView.dll</HintPath>
+    </Reference>
+    <Reference Include="Telerik.WinControls.UI">
+      <HintPath>..\..\ATV_CIMitar_Launcher\CIMitar\CIMitarAdmin_ATV\Modules\Telerik.WinControls.UI.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <AppDesigner Include="Properties\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Carrier.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Carrier.Designer.cs">
+      <DependentUpon>Carrier.cs</DependentUpon>
+    </Compile>
+    <Compile Include="CIMitarAdminWS\CIMitarWSSoap.cs" />
+    <Compile Include="CIMitarAdminWS\CIMitarWSSoapChannel.cs" />
+    <Compile Include="CIMitarAdminWS\CIMitarWSSoapClient.cs" />
+    <Compile Include="Class\AllowAllAssemblyVersionsDeserializationBinder.cs" />
+    <Compile Include="Class\CarrierInfo.cs" />
+    <Compile Include="Class\CATPDailySummary.cs" />
+    <Compile Include="Class\CATPData.cs" />
+    <Compile Include="Class\CATPList.cs" />
+    <Compile Include="Class\CATPSummary.cs" />
+    <Compile Include="Class\CCarrierData.cs" />
+    <Compile Include="Class\CCarrierDataHistory.cs" />
+    <Compile Include="Class\CCarrierFailModeData.cs" />
+    <Compile Include="Class\CCarrierSite.cs" />
+    <Compile Include="Class\CCarrierType.cs" />
+    <Compile Include="Class\CCarrierUtilData.cs" />
+    <Compile Include="Class\CComentCompleted.cs" />
+    <Compile Include="Class\CCommentHistory.cs" />
+    <Compile Include="Class\CCorrPartHistory.cs" />
+    <Compile Include="Class\CInsertInfo.cs" />
+    <Compile Include="Class\Constant.cs" />
+    <Compile Include="Class\CSlotBlackListData.cs" />
+    <Compile Include="Class\CSlotData.cs" />
+    <Compile Include="Class\CSlotType.cs" />
+    <Compile Include="Class\CSocketInfo.cs" />
+    <Compile Include="Class\CTitanSocketList.cs" />
+    <Compile Include="Class\CWeeklyReport.cs" />
+    <Compile Include="Class\CWeeklyReportResult.cs" />
+    <Compile Include="Class\CWeeklyReportSIBCount.cs" />
+    <Compile Include="Class\CWeeklyReportSIBFail.cs" />
+    <Compile Include="Class\StreamManager.cs" />
+    <Compile Include="Class\SWVersion.cs" />
+    <Compile Include="Control\CheckedComboBox.cs" />
+    <Compile Include="Control\ComboBoxItem.cs" />
+    <Compile Include="Control\ExcelControl.cs" />
+    <Compile Include="Control\RepairHistoryInfo.cs" />
+    <Compile Include="Control\RepairInfo.cs" />
+    <Compile Include="GridInfo.cs" />
+    <Compile Include="ModuleExecutor.cs" />
+    <Compile Include="Program.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Properties\Resources.cs" />
+    <Compile Include="Properties\Settings.Designer.cs">
+      <DependentUpon>Settings.settings</DependentUpon>
+      <AutoGen>True</AutoGen>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+    </Compile>
+    <Compile Include="QueryMgr.cs" />
+    <Compile Include="View\AddCarrier.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="View\AddCarrier.Designer.cs">
+      <DependentUpon>AddCarrier.cs</DependentUpon>
+    </Compile>
+    <Compile Include="View\AddCorrelationPartHistory.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="View\AddCorrelationPartHistory.Designer.cs">
+      <DependentUpon>AddCorrelationPartHistory.cs</DependentUpon>
+    </Compile>
+    <Compile Include="View\AddSocket.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="View\AddSocket.Designer.cs">
+      <DependentUpon>AddSocket.cs</DependentUpon>
+    </Compile>
+    <Compile Include="View\AddSocketComment.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="View\AddSocketComment.Designer.cs">
+      <DependentUpon>AddSocketComment.cs</DependentUpon>
+    </Compile>
+    <Compile Include="View\AddSWHistory.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="View\AddSWHistory.Designer.cs">
+      <DependentUpon>AddSWHistory.cs</DependentUpon>
+    </Compile>
+    <Compile Include="View\AnsAddSocketComment.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="View\AnsAddSocketComment.Designer.cs">
+      <DependentUpon>AnsAddSocketComment.cs</DependentUpon>
+    </Compile>
+    <Compile Include="View\AnsSocketComment.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="View\AnsSocketComment.Designer.cs">
+      <DependentUpon>AnsSocketComment.cs</DependentUpon>
+    </Compile>
+    <Compile Include="View\BarPrograss.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="View\BarPrograss.Designer.cs">
+      <DependentUpon>BarPrograss.cs</DependentUpon>
+    </Compile>
+    <Compile Include="View\CarrierList.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="View\CarrierList.Designer.cs">
+      <DependentUpon>CarrierList.cs</DependentUpon>
+    </Compile>
+    <Compile Include="View\DefectCodeView.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="View\DefectCodeView.Designer.cs">
+      <DependentUpon>DefectCodeView.cs</DependentUpon>
+    </Compile>
+    <Compile Include="View\DetailAction.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="View\DetailAction.Designer.cs">
+      <DependentUpon>DetailAction.cs</DependentUpon>
+    </Compile>
+    <Compile Include="View\DeviceView.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="View\DeviceView.Designer.cs">
+      <DependentUpon>DeviceView.cs</DependentUpon>
+    </Compile>
+    <Compile Include="View\ModifyDefect.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="View\ModifyDefect.Designer.cs">
+      <DependentUpon>ModifyDefect.cs</DependentUpon>
+    </Compile>
+    <Compile Include="View\RepairCodeView.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="View\RepairCodeView.Designer.cs">
+      <DependentUpon>RepairCodeView.cs</DependentUpon>
+    </Compile>
+    <Compile Include="View\ResetReason.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="View\ResetReason.Designer.cs">
+      <DependentUpon>ResetReason.cs</DependentUpon>
+    </Compile>
+    <Compile Include="View\ResultSocketView.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="View\ResultSocketView.Designer.cs">
+      <DependentUpon>ResultSocketView.cs</DependentUpon>
+    </Compile>
+    <Compile Include="View\ResultView.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="View\ResultView.Designer.cs">
+      <DependentUpon>ResultView.cs</DependentUpon>
+    </Compile>
+    <Compile Include="View\SlotBlackListClustered.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="View\SlotBlackListClustered.Designer.cs">
+      <DependentUpon>SlotBlackListClustered.cs</DependentUpon>
+    </Compile>
+    <Compile Include="View\TestHistory.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="View\TestHistory.Designer.cs">
+      <DependentUpon>TestHistory.cs</DependentUpon>
+    </Compile>
+    <Compile Include="View\UserDefColumn.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="View\UserDefColumn.Designer.cs">
+      <DependentUpon>UserDefColumn.cs</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Carrier.resources" />
+    <EmbeddedResource Include="Control\RepairHistoryInfo.resources" />
+    <EmbeddedResource Include="Control\RepairInfo.resources" />
+    <EmbeddedResource Include="Properties\Resources.resources" />
+    <EmbeddedResource Include="View\AddCarrier.resources" />
+    <EmbeddedResource Include="View\AddCorrelationPartHistory.resources" />
+    <EmbeddedResource Include="View\AddSocket.resources" />
+    <EmbeddedResource Include="View\AddSocketComment.resources" />
+    <EmbeddedResource Include="View\AddSWHistory.resources" />
+    <EmbeddedResource Include="View\AnsAddSocketComment.resources" />
+    <EmbeddedResource Include="View\AnsSocketComment.resources" />
+    <EmbeddedResource Include="View\BarPrograss.resources" />
+    <EmbeddedResource Include="View\CarrierList.resources" />
+    <EmbeddedResource Include="View\DetailAction.resources" />
+    <EmbeddedResource Include="View\DeviceView.resources" />
+    <EmbeddedResource Include="View\ModifyDefect.resources" />
+    <EmbeddedResource Include="View\RepairCodeView.resources" />
+    <EmbeddedResource Include="View\ResetReason.resources" />
+    <EmbeddedResource Include="View\ResultSocketView.resources" />
+    <EmbeddedResource Include="View\ResultView.resources" />
+    <EmbeddedResource Include="View\SlotBlackListClustered.resources" />
+    <EmbeddedResource Include="View\TestHistory.resources" />
+    <EmbeddedResource Include="View\UserDefColumn.resources" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\mscorlib\mscorlib.csproj">
+      <Project>{630d445a-f3cb-48c7-a409-1854b25cbcba}</Project>
+      <Name>mscorlib</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\mscorlib\mscorlib.csproj">
+      <Project>{630d445a-f3cb-48c7-a409-1854b25cbcba}</Project>
+      <Name>mscorlib</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

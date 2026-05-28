@@ -1,0 +1,168 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{630D445A-F3CB-48C7-A409-1854B25CBCAF}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Amkor.CADModules.HccSTReportModule</RootNamespace>
+    <AssemblyName>Amkor.CADModules.HccSTReportModule</AssemblyName>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <NoStdLib>true</NoStdLib>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <NoStdLib>true</NoStdLib>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="ATDFW.Base.FrameWork">
+      <HintPath>..\..\ATV_CIMitar_Launcher\CIMitar\CIMitarAdmin_ATV\Modules\ATDFW.Base.FrameWork.dll</HintPath>
+    </Reference>
+    <Reference Include="ATDFW.Classes">
+      <HintPath>..\..\ATV_CIMitar_Launcher\CIMitar\CIMitarAdmin_ATV\Modules\ATDFW.Classes.dll</HintPath>
+    </Reference>
+    <Reference Include="ATDFW.Controls.BaseWinForm">
+      <HintPath>..\..\ATV_CIMitar_Launcher\CIMitar\CIMitarAdmin_ATV\Modules\ATDFW.Controls.BaseWinForm.dll</HintPath>
+    </Reference>
+    <Reference Include="ColorProgressBar">
+      <HintPath>..\..\ATV_CIMitar_Launcher\CIMitar\CIMitarAdmin_ATV\Modules\ColorProgressBar.dll</HintPath>
+    </Reference>
+    <Reference Include="SourceGrid">
+      <HintPath>..\..\ATV_CIMitar_Launcher\CIMitar\CIMitarAdmin_ATV\Modules\SourceGrid.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.ServiceModel" />
+    <Reference Include="System.Windows.Forms" />
+  </ItemGroup>
+  <ItemGroup>
+    <AppDesigner Include="Properties\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="CIMitarAdminWS\CIMitarWSSoap.cs" />
+    <Compile Include="CIMitarAdminWS\CIMitarWSSoapChannel.cs" />
+    <Compile Include="CIMitarAdminWS\CIMitarWSSoapClient.cs" />
+    <Compile Include="Class\CCommon.cs" />
+    <Compile Include="Class\CCommonVal.cs" />
+    <Compile Include="Class\CCsvData.cs" />
+    <Compile Include="Class\CData.cs" />
+    <Compile Include="Class\CEQ.cs" />
+    <Compile Include="Class\CEWS_KIT.cs" />
+    <Compile Include="Class\CEWS_PC.cs" />
+    <Compile Include="Class\CEWS_PIB.cs" />
+    <Compile Include="Class\CEWS_PT.cs" />
+    <Compile Include="Class\CFT_CK.cs" />
+    <Compile Include="Class\CFT_DK.cs" />
+    <Compile Include="Class\CFT_DUT.cs" />
+    <Compile Include="Class\CFT_HS.cs" />
+    <Compile Include="Class\CFT_LB.cs" />
+    <Compile Include="Class\CFT_LK.cs" />
+    <Compile Include="Class\CFT_SK.cs" />
+    <Compile Include="Class\CheckBoxBackColorAlternate.cs" />
+    <Compile Include="Class\CReportCtrl.cs" />
+    <Compile Include="Class\CSVControl.cs" />
+    <Compile Include="Class\CTemp.cs" />
+    <Compile Include="Class\DataTypeNo.cs" />
+    <Compile Include="Class\HwTypeNo.cs" />
+    <Compile Include="HccSTReportModule.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="HccSTReportModule.Designer.cs">
+      <DependentUpon>HccSTReportModule.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Idx_HwList.cs" />
+    <Compile Include="ModuleExecutor.cs" />
+    <Compile Include="Program.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Properties\Resources.cs" />
+    <Compile Include="Properties\Settings.Designer.cs">
+      <DependentUpon>Settings.settings</DependentUpon>
+      <AutoGen>True</AutoGen>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+    </Compile>
+    <Compile Include="SubForms\BarPrograss.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SubForms\BarPrograss.Designer.cs">
+      <DependentUpon>BarPrograss.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SubForms\ReportList.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SubForms\ReportList.Designer.cs">
+      <DependentUpon>ReportList.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SubForms\TabPages\Tab_Base.cs" />
+    <Compile Include="SubForms\TabPages\Tab_EQ.cs" />
+    <Compile Include="SubForms\TabPages\Tab_EWS_KIT.cs" />
+    <Compile Include="SubForms\TabPages\Tab_EWS_PC.cs" />
+    <Compile Include="SubForms\TabPages\Tab_EWS_PIB.cs" />
+    <Compile Include="SubForms\TabPages\Tab_EWS_PT.cs" />
+    <Compile Include="SubForms\TabPages\Tab_FT_CK.cs" />
+    <Compile Include="SubForms\TabPages\Tab_FT_DK.cs" />
+    <Compile Include="SubForms\TabPages\Tab_FT_DUT.cs" />
+    <Compile Include="SubForms\TabPages\Tab_FT_HS.cs" />
+    <Compile Include="SubForms\TabPages\Tab_FT_LB.cs" />
+    <Compile Include="SubForms\TabPages\Tab_FT_LK.cs" />
+    <Compile Include="SubForms\TabPages\Tab_FT_SK.cs" />
+    <Compile Include="SubForms\UploadList.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SubForms\UploadList.Designer.cs">
+      <DependentUpon>UploadList.cs</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="HccSTReportModule.resources" />
+    <EmbeddedResource Include="Properties\Resources.resources" />
+    <EmbeddedResource Include="SubForms\BarPrograss.resources" />
+    <EmbeddedResource Include="SubForms\ReportList.resources" />
+    <EmbeddedResource Include="SubForms\TabPages\Tab_Base.resources" />
+    <EmbeddedResource Include="SubForms\TabPages\Tab_EQ.resources" />
+    <EmbeddedResource Include="SubForms\TabPages\Tab_EWS_KIT.resources" />
+    <EmbeddedResource Include="SubForms\TabPages\Tab_EWS_PC.resources" />
+    <EmbeddedResource Include="SubForms\TabPages\Tab_EWS_PIB.resources" />
+    <EmbeddedResource Include="SubForms\TabPages\Tab_EWS_PT.resources" />
+    <EmbeddedResource Include="SubForms\TabPages\Tab_FT_CK.resources" />
+    <EmbeddedResource Include="SubForms\TabPages\Tab_FT_DK.resources" />
+    <EmbeddedResource Include="SubForms\TabPages\Tab_FT_DUT.resources" />
+    <EmbeddedResource Include="SubForms\TabPages\Tab_FT_HS.resources" />
+    <EmbeddedResource Include="SubForms\TabPages\Tab_FT_LB.resources" />
+    <EmbeddedResource Include="SubForms\TabPages\Tab_FT_LK.resources" />
+    <EmbeddedResource Include="SubForms\TabPages\Tab_FT_SK.resources" />
+    <EmbeddedResource Include="SubForms\UploadList.resources" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\mscorlib\mscorlib.csproj">
+      <Project>{630d445a-f3cb-48c7-a409-1854b25cbcba}</Project>
+      <Name>mscorlib</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

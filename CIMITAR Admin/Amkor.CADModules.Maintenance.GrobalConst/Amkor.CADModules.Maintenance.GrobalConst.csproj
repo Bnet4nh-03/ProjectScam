@@ -1,0 +1,93 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{630D445A-F3CB-48C7-A409-1854B25CBCB1}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Amkor.CADModules.Maintenance.GrobalConst</RootNamespace>
+    <AssemblyName>Amkor.CADModules.Maintenance.GrobalConst</AssemblyName>
+    <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <NoStdLib>true</NoStdLib>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <NoStdLib>true</NoStdLib>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="ATDFW.Classes">
+      <HintPath>..\..\ATV_CIMitar_Launcher\CIMitar\CIMitarAdmin_ATV\Modules\ATDFW.Classes.dll</HintPath>
+    </Reference>
+    <Reference Include="ATDFW.Controls.BaseWinForm">
+      <HintPath>..\..\ATV_CIMitar_Launcher\CIMitar\CIMitarAdmin_ATV\Modules\ATDFW.Controls.BaseWinForm.dll</HintPath>
+    </Reference>
+    <Reference Include="SevenZipSharp">
+      <HintPath>..\..\ATV_CIMitar_Launcher\CIMitar\CIMitarAdmin_ATV\Modules\SevenZipSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+    <Reference Include="System.ServiceModel" />
+    <Reference Include="System.Windows.Forms" />
+  </ItemGroup>
+  <ItemGroup>
+    <AppDesigner Include="Properties\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="cConst.cs" />
+    <Compile Include="cFunction.cs" />
+    <Compile Include="CIMitarAdminWS\CIMitarWSSoap.cs" />
+    <Compile Include="CIMitarAdminWS\CIMitarWSSoapChannel.cs" />
+    <Compile Include="CIMitarAdminWS\CIMitarWSSoapClient.cs" />
+    <Compile Include="Class\cFileList.cs" />
+    <Compile Include="Class\confir.cs" />
+    <Compile Include="Class\cReportItem.cs" />
+    <Compile Include="Class\HCC.cs" />
+    <Compile Include="Class\HCCContent.cs" />
+    <Compile Include="Class\HCCParameter.cs" />
+    <Compile Include="Class\HCCTYPE.cs" />
+    <Compile Include="Class\QueryMgr.cs" />
+    <Compile Include="Class\SiteMap.cs" />
+    <Compile Include="Class\SiteMapInformation.cs" />
+    <Compile Include="Class\SITESTATUS.cs" />
+    <Compile Include="Class\SITE_DRIECTION.cs" />
+    <Compile Include="Class\STIE_COLOR.cs" />
+    <Compile Include="EquipmentInfo.cs" />
+    <Compile Include="GridViewType.cs" />
+    <Compile Include="Interface\IHCC.cs" />
+    <Compile Include="MainPageType.cs" />
+    <Compile Include="MESSAGETYPE.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SYSTEMTYPE.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\mscorlib\mscorlib.csproj">
+      <Project>{630d445a-f3cb-48c7-a409-1854b25cbcba}</Project>
+      <Name>mscorlib</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="app.config" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

@@ -49,7 +49,6 @@ const platformNameListData = ref([]);
 
 // UI flags
 const allowAddRow = true;
-const allowUploadData = true;
 const allowSubmit = true;
 const allowRefresh = true;
 const allowSearching = true;
@@ -377,6 +376,7 @@ const TABLE_SCHEMA = computed(() => ({
       ],
       optionLabel: "label",
       optionValue: "value",
+      defaultSelectValue: 1,
       required: true
     },
 
@@ -390,6 +390,7 @@ const TABLE_SCHEMA = computed(() => ({
       ],
       optionLabel: "label",
       optionValue: "value",
+      defaultSelectValue: 1,
       required: true
     },
 
@@ -397,7 +398,8 @@ const TABLE_SCHEMA = computed(() => ({
       label: "Menu Code",
       field: "menucode",
       mode: "input",
-      required: true
+      defaultInputValue: 120001,
+      required: true,
     },
 
     {
@@ -410,6 +412,7 @@ const TABLE_SCHEMA = computed(() => ({
       ],
       optionLabel: "label",
       optionValue: "value",
+      defaultSelectValue: 0,
       required: true
     },
 
