@@ -369,68 +369,86 @@ watch(currentPlatform, async (newPlatform) => {
 async function displayAllData() {
   const platform = currentPlatform.value;
   if (!platform) return;
-                                   
-  // --- MTBA ---
-  const mtbaResult = await get_MTBA_data(getTodayDateTime(), getCurrentDateTime(), platform);
-  const mtbaMetrics = ['Run Time', 'JAM Count', 'MTBA'];
-  const pivotedDataMtba = pivotData(mtbaResult, mtbaMetrics);
-  const mtbaColumns = getColumnDataTable({ value: pivotedDataMtba });
 
-  mtbaDataTableMap.value[platform] = pivotedDataMtba;
-  mtbaColumnTableMap.value[platform] = mtbaColumns;
+  try {
+    // ===== CALL APIs song song =====
+    const [mtbaResult, mtbfResult, totalJamResult] = await Promise.all([
+      get_MTBA_data(getTodayDateTime(), getCurrentDateTime(), platform),
+      get_MTBF_data(platform),
+      getTotalJamList(getTodayDate(), getTodayDate(), platform)
+    ]);
 
-  const mtbaLabels = mtbaResult.map(item => item.Handler);
-  const mtbaDataChart = mtbaResult.map(item => item.MTBA);
-  const chartDataMtba = generateChartDataForPlatform(mtbaLabels, mtbaDataChart, platform);
-  if (chartDataMtba) {
-    chartMtbaDataMap.value[platform] = chartDataMtba;
-    chartMtbaOptionsMap.value[platform] = getChartOptions(platform + ' MTBA');
-  }
+    // ===== MTBA =====
+    const mtbaMetrics = ['Run Time', 'JAM Count', 'MTBA'];
+    const pivotMtba = pivotData(mtbaResult, mtbaMetrics);
+    mtbaDataTableMap.value[platform] = pivotMtba;
+    mtbaColumnTableMap.value[platform] = getColumnDataTable({ value: pivotMtba });
 
-  // --- MTBF ---
-  const mtbfResult = await get_MTBF_data(platform);
-  const mtbfMetrics = ['Run Time', 'Total Assist', 'MTBF'];
-  const pivotDataMtbf = pivotData(mtbfResult, mtbfMetrics);
-  const mtbfColumns = getColumnDataTable({ value: pivotDataMtbf });
+    // Chart MTBA
+    const chartDataMtba = generateChartDataForPlatform(
+      mtbaResult.map(i => i.Handler),
+      mtbaResult.map(i => i.MTBA),
+      platform
+    );
 
-  mtbfDataTableMap.value[platform] = pivotDataMtbf;
-  mtbfColumnTableMap.value[platform] = mtbfColumns;
-
-  const mtbfLabels = mtbfResult.map(item => item.Handler);
-  const mtbfDataChart = mtbfResult.map(item => item.MTBF);
-  const chartDataMtbf = generateChartDataMtbf(mtbfLabels, mtbfDataChart);
-  if (chartDataMtbf) {
-    chartMtbfDataMap.value[platform] = chartDataMtbf;
-    chartMtbfOptionsMap.value[platform] = getChartOptions(platform + ' MTBF');
-  }
-
-  // --- Top JAM cho platform đang chọn ---
-  const topJamRows = [];
-  const dataArray = mtbaDataTableMap.value[platform] || [];
-  for (const data of dataArray) {
-    if (data['Machine'] === 'JAM Count') {
-      const entries = Object.entries(data)
-        .filter(([key, value]) => key !== 'Machine' && value > 0)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 3);
-
-      for (const [handler] of entries) {
-        const jamDetail = await getTopJamListMtba(handler); // API trả về chi tiết Jam
-        const jams = jamDetail.map(jamRow => ([
-          { No: jamRow['No'], 'Jam ID': jamRow['Jam ID'], 'Jam Description': jamRow['Jam Description'], Quantity: jamRow['Quantity'] }
-        ]));
-        topJamRows.push({ machine: handler, jams });
-      }
+    if (chartDataMtba) {
+      chartMtbaDataMap.value[platform] = chartDataMtba;
+      chartMtbaOptionsMap.value[platform] = getChartOptions(`${platform} MTBA`);
     }
-  }
 
-  mtbaSummaryTopJamDataMap.value[platform] = topJamRows;
+    // ===== MTBF =====
+    const mtbfMetrics = ['Run Time', 'Total Assist', 'MTBF'];
+    const pivotMtbf = pivotData(mtbfResult, mtbfMetrics);
+    mtbfDataTableMap.value[platform] = pivotMtbf;
+    mtbfColumnTableMap.value[platform] = getColumnDataTable({ value: pivotMtbf });
 
-  // --- Total Jam List ---
-  const totalJamResult = await getTotalJamList(getTodayDate(), getTodayDate(), platform);
-  if (totalJamResult && totalJamResult.length > 0) {
-    totalJamDataMap.value[platform] = totalJamResult;
-    totalJamColumnsMap.value[platform] = Object.keys(totalJamResult[0]);
+    // Chart MTBF
+    const chartDataMtbf = generateChartDataMtbf(
+      mtbfResult.map(i => i.Handler),
+      mtbfResult.map(i => i.MTBF)
+    );
+
+    if (chartDataMtbf) {
+      chartMtbfDataMap.value[platform] = chartDataMtbf;
+      chartMtbfOptionsMap.value[platform] = getChartOptions(`${platform} MTBF`);
+    }
+
+    // ===== TOP JAM (OPTIMIZED) =====
+    const jamRow = pivotMtba.find(d => d.Machine === 'JAM Count');
+
+    let topJamRows = [];
+    if (jamRow) {
+      const topHandlers = Object.entries(jamRow)
+        .filter(([key, val]) => key !== 'Machine' && val > 0)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([handler]) => handler);
+
+      const jamDetails = await Promise.all(
+        topHandlers.map(handler => getTopJamListMtba(handler))
+      );
+
+      topJamRows = topHandlers.map((handler, index) => ({
+        machine: handler,
+        jams: jamDetails[index].map(j => ({
+          No: j['No'],
+          'Jam ID': j['Jam ID'],
+          'Jam Description': j['Jam Description'],
+          Quantity: j['Quantity']
+        }))
+      }));
+    }
+
+    mtbaSummaryTopJamDataMap.value[platform] = topJamRows;
+
+    // ===== TOTAL JAM =====
+    if (totalJamResult?.length) {
+      totalJamDataMap.value[platform] = totalJamResult;
+      totalJamColumnsMap.value[platform] = Object.keys(totalJamResult[0]);
+    }
+
+  } catch (error) {
+    console.error('displayAllData error:', error);
   }
 }
 

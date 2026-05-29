@@ -5,10 +5,12 @@
  * - Vue Reactivity (ref, computed, watch) for state
  * - Chart.js for data visualization
  */
-import { ref, onMounted, onUnmounted , inject, watch, computed } from 'vue'
+import { ref, onMounted, onUnmounted , inject, watch, computed, h } from 'vue'
 import TableSection from '@/modules/equipmentMonitoring/component/TableSection.vue'
 import ChartSection from '@/modules/equipmentMonitoring/component/ChartSection.vue'
 import TopJamTable from '@/modules/equipmentMonitoring/component/TopJamTable.vue'
+import BaseTable from '@/modules/holdLotManagement/component/BaseTable.vue';
+import EquipmentMonitoringService from '../services/EquipmentMonitoringService';
 import { Chart, registerables } from 'chart.js';
 import Select from 'primevue/select';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
@@ -22,7 +24,10 @@ const reportTypeOption = ref(["Daily","Weekly","Monthly"]);
 const isDaily = computed(() => reportType.value === 'Daily' && dataType.value === 'MTBA');
 const isWeekly = computed(() => reportType.value === 'Weekly' && dataType.value === 'MTBA');
 const isMonthly = computed(() => reportType.value === 'Monthly' && dataType.value === 'MTBA');
+const isDateRange = computed(() => { return (dataType.value === 'MTBA' && Array.isArray(dateRange.value) && dateRange.value.length === 2 && dateRange.value[0] && dateRange.value[1]);});
 const isMTBF = computed(() => dataType.value === 'MTBF');
+
+const service = new EquipmentMonitoringService(apiClient);
 
 const dataType = ref("MTBA")
 const dataTypeOption = ref(["MTBA", "MTBF"])
@@ -65,6 +70,30 @@ const mtbfColumnTableMap = ref({})
 
 const chartMtbfDataMap = ref({});
 const chartMtbfOptionsMap = ref({});
+
+// Vanh
+const dateRangeSectionMap = ref({});
+
+const totalJamDataMap = ref({});
+const totalJamColumnsMap = ref({});
+
+const chartRangeDataMap = ref({})
+const chartRangeOptionsMap = ref({})
+
+const dateRange = ref(null)
+const fromDate = ref(null);
+const toDate = ref(null);
+
+const tableTesterColumns = [
+  { label: 'Handler', field: 'Handler' },
+  { label: 'Description', field: 'Description' },
+  { label: 'Jam Time', field: 'Jam Time' },
+  { label: 'Platform', field: 'Platform' },
+  { label: 'Run Time', field: 'Run Time' },
+  { label: 'Start Time', field: 'Start Time' },
+  { label: 'Status', field: 'Status' },
+  { label: 'Stop Time', field: 'Stop Time' }
+];
 
 
 // ---- Helper Functions ----
@@ -775,6 +804,13 @@ function clearMaps() {
   mtbaSummaryTopJamColumnMap.value = {};
 
   mtbaSummaryTopJamDataMap.value = {};
+
+  // vanh
+  totalJamDataMap.value = {};
+  totalJamColumnsMap.value = {};
+
+  chartRangeDataMap.value = {};
+  chartRangeOptionsMap.value = {};
 }
 
 /**
@@ -854,11 +890,40 @@ watch(currentPlatform, async (newPlatform) => {
 });
 
 watch(reportType, async (newReportType) => {
+  if (['Daily', 'Weekly', 'Monthly'].includes(newReportType)) {
+    dateRange.value = [];
+  }
+
   reportType.value = newReportType
   // when changing Platform -> remove old data and fetch data for new platform
   clearMaps();
   await displayAllData();
 });
+
+watch(dateRange, async (newValue) => {
+  const isValid =
+    Array.isArray(newValue) &&
+    newValue.length === 2 &&
+    !!newValue[0] &&
+    !!newValue[1];
+
+  if (isValid) {
+    reportType.value = null; 
+  }
+
+  clearMaps();
+  
+  const start = new Date(newValue?.[0]);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(newValue?.[1]);
+  end.setHours(23, 59, 59, 999);
+
+  fromDate.value = start;
+  toDate.value = end;
+
+  await displayAllData();
+})
 
 watch(dataType, async (newDataType) => {
   clearMaps();
@@ -870,119 +935,375 @@ watch(dataType, async (newDataType) => {
  * Determines which data to fetch based on `reportType` (Daily/Weekly/Monthly) or `dataType` (MTBA/MTBF).
  * Populates reactive state maps for Tables and Charts.
  */
+let displayAllDataRequestId = 0;
+
+async function loadDateRangeSection(platform, from, to, requestId) {
+  try {
+    const dateRangeResult = await get_MTBA_data(from, to, platform, '');
+
+    if (!isLatestRequest(requestId)) return;
+
+    const pivotedData = pivotData(safeArray(dateRangeResult));
+    const columns = getColumnDataTable({ value: pivotedData });
+
+    const chartData = generateChartDataForPlatform(pivotedData, columns, platform);
+    const chartOptions = chartData ? getChartOptions(`${platform} Date Range`, chartData) : null;
+
+    dateRangeSectionMap.value[platform] = {
+      tableData: pivotedData,
+      columns,
+      chartData,
+      chartOptions
+    };
+  } catch (error) {
+    console.error(`loadDateRangeSection error [${platform}]:`, error);
+
+    if (!isLatestRequest(requestId)) return;
+
+    dateRangeSectionMap.value[platform] = {
+      tableData: [],
+      columns: [],
+      chartData: null,
+      chartOptions: null
+    };
+  }
+}
+
 async function displayAllData() {
+  const requestId = ++displayAllDataRequestId;
+
   const platform = currentPlatform.value;
+  const selectedDataType = dataType.value;
+  const daily = isDaily.value;
+  const weekly = isWeekly.value;
+  const monthly = isMonthly.value;
+  const from = fromDate.value;
+  const to = toDate.value;
+
   if (!platform) return;
 
-  if (dataType.value === 'MTBF') {
-    await displayMTBFData();
-    return;
-  }
+  try {
+    // Nếu là MTBF thì xử lý riêng
+    if (selectedDataType === 'MTBF') {
+      await displayMTBFData();
+      return;
+    }
 
-  // 1. Daily Data
-  if (isDaily.value) {
-    const result = await get_MTBA_data(getTodayDateTime(), getCurrentDateTime(), platform, '');
-  
-    const pivotedData = pivotData(result);
+    const tasks = [];
+
+    if (daily) {
+      tasks.push(loadDailySection(platform, requestId));
+    }
+
+    if (weekly) {
+      tasks.push(loadWeeklySection(platform, requestId));
+    }
+
+    if (monthly) {
+      tasks.push(loadMonthlySection(platform, requestId));
+    }
+        
+    if (isDateRange.value) {
+      tasks.push(loadDateRangeSection(platform, from, to, requestId));
+    }
+
+    // Total jam luôn chạy
+    tasks.push(loadTotalJamSection(platform, from, to, requestId));
+
+    const results = await Promise.allSettled(tasks);
+
+    // Log lỗi từng phần để không làm hỏng toàn bộ màn hình
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        console.error(`displayAllData task[${index}] failed:`, result.reason);
+      }
+    });
+  } catch (error) {
+    console.error('displayAllData error:', error);
+  }
+}
+
+/**
+ * =========================
+ * Helpers
+ * =========================
+ */
+
+function isLatestRequest(requestId) {
+  return requestId === displayAllDataRequestId;
+}
+
+function uniqueDateColumns(data = []) {
+  return ['Date', ...new Set(data.map(item => item.Date).filter(Boolean))];
+}
+
+function safeArray(data) {
+  return Array.isArray(data) ? data : [];
+}
+
+/**
+ * =========================
+ * Daily Section
+ * =========================
+ */
+async function loadDailySection(platform, requestId) {
+  try {
+    const [
+      dailyResult,
+      dataLast3Month,
+      dataLast4Week,
+      dataRecentDays
+    ] = await Promise.all([
+      get_MTBA_data(getTodayDateTime(), getCurrentDateTime(), platform, ''),
+      getMonthWeekData(lastNMonths(3), platform),
+      getMonthWeekData(getLast4Weeks(), platform),
+      getDayData(platform)
+    ]);
+
+    if (!isLatestRequest(requestId)) return;
+
+    // 1) Daily Data Table
+    const pivotedData = pivotData(safeArray(dailyResult));
     const columns = getColumnDataTable({ value: pivotedData });
 
     mtbaDataTableMap.value[platform] = pivotedData;
     mtbaColumnTableMap.value[platform] = columns;
-  
+
+    // 2) Daily Chart
     const chartData = generateChartDataForPlatform(pivotedData, columns, platform);
-  
     if (chartData) {
       chartDataMap.value[platform] = chartData;
       chartOptionsMap.value[platform] = getChartOptions(platform, chartData);
+    } else {
+      chartDataMap.value[platform] = null;
+      chartOptionsMap.value[platform] = null;
     }
 
-    // Common data for Daily charts
-    const dataLast3Month = await getMonthWeekData(lastNMonths(3), platform)
-    const dataLast4Week = await getMonthWeekData(getLast4Weeks(), platform)
-    const dataRecentdays = await getDayData(platform)
-    const dataCommon = [...dataLast3Month, ...dataLast4Week, ...dataRecentdays]
+    // 3) Common Data (3 tháng + 4 tuần + recent days)
+    const combinedCommonData = [
+      ...safeArray(dataLast3Month),
+      ...safeArray(dataLast4Week),
+      ...safeArray(dataRecentDays)
+    ];
 
-    mtbaCommonDataTable.value[platform] = pivotWeekMonthData(dataCommon)
+    mtbaCommonDataTable.value[platform] = pivotWeekMonthData(combinedCommonData);
+    mtbaCommonColumnTable.value[platform] = uniqueDateColumns(combinedCommonData);
 
-    const dataCommonColumn = [...["Date"], ...dataCommon.map(item => item.Date)]
-    mtbaCommonColumnTable.value[platform] = dataCommonColumn
-  
-    const charCommonData = generateChartMonthDataForPlatform(dataCommon, platform)
-
-    if (charCommonData){
-      chartCommonDataMap.value[platform] = charCommonData;
-      chartCommonOptionsMap.value[platform] = getChartOptions(platform + "  Common", charCommonData);
+    const chartCommonData = generateChartMonthDataForPlatform(combinedCommonData, platform);
+    if (chartCommonData) {
+      chartCommonDataMap.value[platform] = chartCommonData;
+      chartCommonOptionsMap.value[platform] = getChartOptions(`${platform} Common`, chartCommonData);
+    } else {
+      chartCommonDataMap.value[platform] = null;
+      chartCommonOptionsMap.value[platform] = null;
     }
-    
-    // Top Jam Data (Dependent on Daily Data)
-    for (const [p, dataArray] of Object.entries(mtbaDataTableMap.value)) {
-      if (p !== platform) continue; // Should effectively only be one, but safe check
-      const topJamRows = [];
-      for (const data of dataArray) {
-        if (data["Machine"] === "JAM Count") {
-          const entries = Object.entries(data)
-            .filter(([key, value]) => key !== "Machine" && value > 0)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 3);
-          for (let i = 0; i < entries.length; i++) {
-            const [handler, qty] = entries[i];
-          
-            const jamDetail = await getTopJamListMtba(handler);
-          
-            const jams = []
-            for (const jamRow of jamDetail){
-              jams.push([{No: jamRow["No"], "Jam ID": jamRow["Jam ID"], "Jam Description": jamRow["Jam Description"], Quantity: jamRow["Quantity"]}]);
-            }
-            topJamRows.push({
-              machine: handler,
-              jams: jams  
-            });
-          
-          }
-        }
-      }
-    
-      mtbaSummaryTopJamDataMap.value[platform] = topJamRows;
-      mtbaSummaryTopJamColumnMap.value[platform] = ["Top 3 Worst M/C", "No", "Jam ID", "Jam Description", "Qty", "Comment"];
-    }
-    
+
+    // 4) Top Jam Summary (phụ thuộc daily pivotedData)
+    const topJamRows = await buildTopJamSummary(pivotedData, requestId);
+
+    if (!isLatestRequest(requestId)) return;
+
+    mtbaSummaryTopJamDataMap.value[platform] = topJamRows;
+    mtbaSummaryTopJamColumnMap.value[platform] = [
+      'Top 3 Worst M/C',
+      'No',
+      'Jam ID',
+      'Jam Description',
+      'Qty',
+      'Comment'
+    ];
+  } catch (error) {
+    console.error(`loadDailySection error [${platform}]:`, error);
+
+    if (!isLatestRequest(requestId)) return;
+
+    // Reset data lỗi để UI không giữ data cũ sai
+    mtbaDataTableMap.value[platform] = [];
+    mtbaColumnTableMap.value[platform] = [];
+    chartDataMap.value[platform] = null;
+    chartOptionsMap.value[platform] = null;
+
+    mtbaCommonDataTable.value[platform] = [];
+    mtbaCommonColumnTable.value[platform] = [];
+    chartCommonDataMap.value[platform] = null;
+    chartCommonOptionsMap.value[platform] = null;
+
+    mtbaSummaryTopJamDataMap.value[platform] = [];
+    mtbaSummaryTopJamColumnMap.value[platform] = [
+      'Top 3 Worst M/C',
+      'No',
+      'Jam ID',
+      'Jam Description',
+      'Qty',
+      'Comment'
+    ];
   }
+}
 
-  // 2. Weekly Data
-  if (isWeekly.value) {
-    const dataMonthly = await getMonthWeekData(lastNMonths(6), platform)
-    const dataWeely = await getMonthWeekData(getLast4Weeks(), platform)
-    const weeklyData = [...dataMonthly, ...dataWeely]
-    mtbaDataWeeklyTableMap.value[platform] = pivotWeekMonthData(weeklyData)
+async function buildTopJamSummary(dataArray, requestId) {
+  try {
+    const safeDataArray = safeArray(dataArray);
+    if (!safeDataArray.length) return [];
 
-    const weeklyColumn = [...["Date"], ...weeklyData.map(item => item.Date)]
-    mtbaWeeklyColumnTableMap.value[platform] = weeklyColumn
+    const jamCountRow = safeDataArray.find(row => row['Machine'] === 'JAM Count');
+    if (!jamCountRow) return [];
 
-    const chartWeekData = generateChartMonthDataForPlatform(weeklyData, platform)
+    const topEntries = Object.entries(jamCountRow)
+      .filter(([key, value]) => key !== 'Machine' && Number(value) > 0)
+      .sort((a, b) => Number(b[1]) - Number(a[1]))
+      .slice(0, 3);
 
-    if (chartWeekData){
+    if (!topEntries.length) return [];
+
+    // Gọi song song thay vì await từng handler
+    const detailResults = await Promise.all(
+      topEntries.map(([handler]) => getTopJamListMtba(handler))
+    );
+
+    if (!isLatestRequest(requestId)) return [];
+
+    return topEntries.map(([handler], index) => {
+      const jamDetail = safeArray(detailResults[index]);
+
+      return {
+        machine: handler,
+        jams: jamDetail.map(jamRow => ({
+          No: jamRow['No'],
+          'Jam ID': jamRow['Jam ID'],
+          'Jam Description': jamRow['Jam Description'],
+          Quantity: jamRow['Quantity']
+        }))
+      };
+    });
+  } catch (error) {
+    console.error('buildTopJamSummary error:', error);
+    return [];
+  }
+}
+
+/**
+ * =========================
+ * Weekly Section
+ * =========================
+ */
+async function loadWeeklySection(platform, requestId) {
+  try {
+    const [dataMonthly, dataWeekly] = await Promise.all([
+      getMonthWeekData(lastNMonths(6), platform),
+      getMonthWeekData(getLast4Weeks(), platform)
+    ]);
+
+    if (!isLatestRequest(requestId)) return;
+
+    const weeklyData = [
+      ...safeArray(dataMonthly),
+      ...safeArray(dataWeekly)
+    ];
+
+    mtbaDataWeeklyTableMap.value[platform] = pivotWeekMonthData(weeklyData);
+    mtbaWeeklyColumnTableMap.value[platform] = uniqueDateColumns(weeklyData);
+
+    const chartWeekData = generateChartMonthDataForPlatform(weeklyData, platform);
+    if (chartWeekData) {
       chartWeekDataMap.value[platform] = chartWeekData;
-      chartWeekOptionsMap.value[platform] = getChartOptions(platform + " Weekly", chartWeekData);
+      chartWeekOptionsMap.value[platform] = getChartOptions(`${platform} Weekly`, chartWeekData);
+    } else {
+      chartWeekDataMap.value[platform] = null;
+      chartWeekOptionsMap.value[platform] = null;
     }
-  }
+  } catch (error) {
+    console.error(`loadWeeklySection error [${platform}]:`, error);
 
-  // 3. Monthly Data
-  if (isMonthly.value) {
-    const mtbaMonthDataTable = await getMonthWeekData(lastNMonths(12), platform)
-    mtbaDataMonthlyTableMap.value[platform] = pivotWeekMonthData(mtbaMonthDataTable)
-  
-    const monthlyColumn = [...["Date"], ...mtbaMonthDataTable.map(item => item.Date)]
-  
-    mtbaMonthlyColumnTableMap.value[platform] = monthlyColumn
-  
-    const chartMonthData = generateChartMonthDataForPlatform(mtbaMonthDataTable, platform)
-  
-    if (chartMonthData){
+    if (!isLatestRequest(requestId)) return;
+
+    mtbaDataWeeklyTableMap.value[platform] = [];
+    mtbaWeeklyColumnTableMap.value[platform] = [];
+    chartWeekDataMap.value[platform] = null;
+    chartWeekOptionsMap.value[platform] = null;
+  }
+}
+
+/**
+ * =========================
+ * Monthly Section
+ * =========================
+ */
+async function loadMonthlySection(platform, requestId) {
+  try {
+    const monthlyData = await getMonthWeekData(lastNMonths(12), platform);
+
+    if (!isLatestRequest(requestId)) return;
+
+    const safeMonthlyData = safeArray(monthlyData);
+
+    mtbaDataMonthlyTableMap.value[platform] = pivotWeekMonthData(safeMonthlyData);
+    mtbaMonthlyColumnTableMap.value[platform] = uniqueDateColumns(safeMonthlyData);
+
+    const chartMonthData = generateChartMonthDataForPlatform(safeMonthlyData, platform);
+    if (chartMonthData) {
       chartMonthDataMap.value[platform] = chartMonthData;
-      chartMonthOptionsMap.value[platform] = getChartOptions(platform + " Monthly", chartMonthData);
+      chartMonthOptionsMap.value[platform] = getChartOptions(`${platform} Monthly`, chartMonthData);
+    } else {
+      chartMonthDataMap.value[platform] = null;
+      chartMonthOptionsMap.value[platform] = null;
     }
-  }
+  } catch (error) {
+    console.error(`loadMonthlySection error [${platform}]:`, error);
 
+    if (!isLatestRequest(requestId)) return;
+
+    mtbaDataMonthlyTableMap.value[platform] = [];
+    mtbaMonthlyColumnTableMap.value[platform] = [];
+    chartMonthDataMap.value[platform] = null;
+    chartMonthOptionsMap.value[platform] = null;
+  }
+}
+
+/**
+ * =========================
+ * Total Jam Section
+ * =========================
+ */
+function formatDateTime(dateString) {
+  if (!dateString) return '';
+
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return dateString;
+
+  const hh = String(date.getHours()).padStart(2, '0');
+  const mm = String(date.getMinutes()).padStart(2, '0');
+  const ss = String(date.getSeconds()).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const MM = String(date.getMonth() + 1).padStart(2, '0');
+  const yyyy = date.getFullYear();
+
+  return `${hh}:${mm}:${ss} ${dd}/${MM}/${yyyy}`;
+}
+
+async function loadTotalJamSection(platform, from, to, requestId) {
+  try {
+    const totalJamResult = await service.getTotalJamList(from, to, platform);
+
+    if (!isLatestRequest(requestId)) return;
+
+    const safeTotalJamResult = safeArray(totalJamResult).map(item => ({
+      ...item,
+      'Jam Time': formatDateTime(item['Jam Time']),
+      'Stop Time': formatDateTime(item['Stop Time'])
+    }));
+
+    totalJamDataMap.value[platform] = safeTotalJamResult;
+    totalJamColumnsMap.value[platform] = safeTotalJamResult.length > 0
+      ? Object.keys(safeTotalJamResult[0])
+      : [];
+  } catch (error) {
+    console.error(`loadTotalJamSection error [${platform}]:`, error);
+
+    if (!isLatestRequest(requestId)) return;
+
+    totalJamDataMap.value[platform] = [];
+    totalJamColumnsMap.value[platform] = [];
+  }
 }
 
 /**
@@ -1038,6 +1359,20 @@ onMounted(async () => {
       <Select v-model="reportType" :options="reportTypeOption" inputId="reportType_select" class="w-full" />
       <label for="on_label">Report Type</label>
     </FloatLabel>
+
+    <FloatLabel class="w-full md:w-72" variant="on">
+      <DatePicker
+        v-model="dateRange"
+        inputId="date_range"
+        selectionMode="range"
+        dateFormat="mm/dd/yy"
+        showIcon
+        :manualInput="false"
+        class="w-full"
+      />
+      <label for="date_range">Date Range</label>
+    </FloatLabel>
+
 
     <FloatLabel class="w-full md:w-56" variant="on">
       <Select v-model="dataType" :options="dataTypeOption" inputId="mtbamtbf_select" class="w-full" />
@@ -1144,6 +1479,40 @@ onMounted(async () => {
         </div>
       </div>
     </div>
+  </section>
+
+  <!-- Date Range -->
+  <section v-show="isDateRange">
+    <template v-for="platform in Object.keys(totalJamDataMap || {})" :key="platform">
+      <div class="card tables-row" v-if="totalJamDataMap[platform]">
+        <div class="card charts-row">
+          <ChartSection
+            v-if="dateRangeSectionMap[platform]?.chartData && dateRangeSectionMap[platform]?.chartOptions"
+            :chartData="dateRangeSectionMap[platform].chartData"
+            :chartOptions="dateRangeSectionMap[platform].chartOptions"
+            class="chart-item"
+          />
+        </div>
+
+        <div class="table-item">
+          <BaseTable
+            :title="`${platform} MTBA Date Range`"
+            :columns="dateRangeSectionMap[platform]?.columns || []"
+            :rowData="dateRangeSectionMap[platform]?.tableData || []"
+            :searching="true"
+          />
+        </div>
+
+        <div class="table-item">
+          <BaseTable
+            :title="`${platform} Total Jam List`"
+            :columns="tableTesterColumns"
+            :rowData="totalJamDataMap[platform] || []"
+            :searching="true"
+          />
+        </div>
+      </div>
+    </template>
   </section>
 
   <!-- MTBF Section -->
