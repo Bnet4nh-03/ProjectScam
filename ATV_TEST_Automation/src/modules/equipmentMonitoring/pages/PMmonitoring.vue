@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted , inject, watch, computed } from 'vue'
+import DatePicker from 'primevue/datepicker';
 import TableSection from '@/modules/equipmentMonitoring/component/TableSection.vue'
 import ChartSection from '@/modules/equipmentMonitoring/component/ChartSection.vue'
 import TopJamTable from '@/modules/equipmentMonitoring/component/TopJamTable.vue'
@@ -25,6 +26,159 @@ const chartMtbfOptionsMap = ref({});
 const mtbaSummaryTopJamDataMap = ref({})
 const totalJamDataMap = ref({});
 const totalJamColumnsMap = ref({});
+
+// Date range picker refs (for Total Jam / Date Range view)
+const dateRange = ref(null);
+const fromDate = ref(null);
+const toDate = ref(null);
+
+// Date range / helper maps moved from MTBArecord.vue
+const dateRangeSectionMap = ref({});
+
+// Request id for concurrency control when loading date-range sections
+let displayAllDataRequestId = 0;
+
+function isLatestRequest(requestId) {
+  return requestId === displayAllDataRequestId;
+}
+
+function uniqueDateColumns(data = []) {
+  return ['Date', ...new Set(data.map(item => item.Date).filter(Boolean))];
+}
+
+function safeArray(data) {
+  return Array.isArray(data) ? data : [];
+}
+
+async function getDayData(platform){
+  const dataDay = []
+  const dayList = (function getDayFromMondayToToday(){
+    const today = new Date();
+    const weekday = today.getDay();
+    const adjustedWeekday = weekday === 0 ? 6 : weekday - 1;
+    if (adjustedWeekday === 0) {
+      return [today.toISOString().split('T')[0]];
+    }
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - adjustedWeekday);
+    const daysList = [];
+    for (let i = 0; i <= adjustedWeekday; i++) {
+      const currentDay = new Date(monday);
+      currentDay.setDate(monday.getDate() + i);
+      daysList.push(currentDay.toISOString().split('T')[0]);
+    }
+    return daysList;
+  })();
+
+  for (const day of dayList){
+    const resultData = {Date : day }
+    const fromDate = day + ' 00:00:00'
+    const toDate = day + ' 23:59:59'
+    const result = await get_MTBA_data(fromDate, toDate, platform)
+    const dataReturn = {...resultData, ...(result[0] || {})}
+    dataDay.push(dataReturn);
+  }
+  return dataDay
+}
+
+async function getDataDictMTBA(dataList, keyData, platform){
+  const resultData = {Date : keyData }
+  const fromDate = dataList[0] + ' 00:00:00'
+  const toDate = dataList[1] + ' 23:59:59'
+  const result = await get_MTBA_data(fromDate, toDate, platform)
+  const dataReturn = {...resultData, ...(result[0] || {})}
+  return dataReturn
+}
+
+async function getMonthWeekData(dateDict, platform) {
+  const skip = new Set(["2025-01","2025-02","2025-03","2025-04", "2025-05","2025-06","2025-07","2025-08", "2025-09", "2025-10"]);
+  const skip_2 = new Set(["2025-10", "2025-11", "2025-12"])
+
+  const keys = Object.keys(dateDict).filter(key => {
+    if (skip.has(key)) return false;
+    if (skip_2.has(key) && platform == 'M850A') return false;
+    return true;
+  });
+
+  const promises = keys.map(async key => {
+    const range = dateDict[key];
+    return await getDataDictMTBA(range, key, platform);
+  });
+
+  const results = await Promise.all(promises);
+  return results;
+}
+
+async function loadDateRangeSection(platform, from, to, requestId) {
+  try {
+    const dateRangeResult = await get_MTBA_data(from, to, platform);
+
+    if (!isLatestRequest(requestId)) return;
+
+    const pivotedData = pivotData(safeArray(dateRangeResult));
+    const columns = getColumnDataTable({ value: pivotedData });
+
+    const chartData = generateChartDataForPlatform(
+      pivotedData.map(r => r.Machine ? Object.keys(r).filter(k => k !== 'Machine') : [] ).flat(),
+      pivotedData.length ? pivotedData[2] : [],
+      platform
+    );
+    const chartOptions = chartData ? getChartOptions(`${platform} Date Range`) : null;
+
+    dateRangeSectionMap.value[platform] = {
+      tableData: pivotedData,
+      columns,
+      chartData,
+      chartOptions
+    };
+  } catch (error) {
+    console.error(`loadDateRangeSection error [${platform}]:`, error);
+
+    if (!isLatestRequest(requestId)) return;
+
+    dateRangeSectionMap.value[platform] = {
+      tableData: [],
+      columns: [],
+      chartData: null,
+      chartOptions: null
+    };
+  }
+}
+
+function formatDateTime(dateString) {
+  if (!dateString) return '';
+
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return dateString;
+
+  const hh = String(date.getHours()).padStart(2, '0');
+  const mm = String(date.getMinutes()).padStart(2, '0');
+  const ss = String(date.getSeconds()).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const MM = String(date.getMonth() + 1).padStart(2, '0');
+  const yyyy = date.getFullYear();
+
+  return `${hh}:${mm}:${ss} ${dd}/${MM}/${yyyy}`;
+}
+
+async function loadTotalJamSection(platform, from, to, requestId) {
+  try {
+    const result = await getTotalJamList(from, to, platform);
+    if (!isLatestRequest(requestId)) return;
+    if (result?.length) {
+      totalJamDataMap.value[platform] = result;
+      totalJamColumnsMap.value[platform] = Object.keys(result[0]);
+    } else {
+      totalJamDataMap.value[platform] = [];
+      totalJamColumnsMap.value[platform] = [];
+    }
+  } catch (error) {
+    console.error(`loadTotalJamSection error [${platform}]:`, error);
+    if (!isLatestRequest(requestId)) return;
+    totalJamDataMap.value[platform] = [];
+    totalJamColumnsMap.value[platform] = [];
+  }
+}
 
 const lineCode = ref([])
 const platformModels = ref([])
@@ -365,6 +519,38 @@ watch(currentPlatform, async (newPlatform) => {
   await displayAllData();
 });
 
+// Watcher for date range selection: load date-range chart/table and total jam list
+function formatYMD(d) {
+  const dt = d instanceof Date ? d : new Date(d);
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth() + 1).padStart(2, '0');
+  const day = String(dt.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+watch(dateRange, async (newRange) => {
+  const isValid = Array.isArray(newRange) && newRange.length === 2 && newRange[0] && newRange[1];
+  if (!isValid) return;
+
+  const startStr = formatYMD(newRange[0]);
+  const endStr = formatYMD(newRange[1]);
+
+  const from = `${startStr} 00:00:00`;
+  const to = `${endStr} 23:59:59`;
+
+  fromDate.value = new Date(startStr);
+  toDate.value = new Date(endStr);
+
+  const platform = currentPlatform.value;
+  if (!platform) return;
+
+  const requestId = ++displayAllDataRequestId;
+  await Promise.all([
+    loadDateRangeSection(platform, from, to, requestId),
+    loadTotalJamSection(platform, from, to, requestId)
+  ]);
+});
+
 // ==== CHỈ fetch data cho platform đã chọn ====
 async function displayAllData() {
   const platform = currentPlatform.value;
@@ -484,6 +670,18 @@ onMounted(async () => {
       <Select v-model="currentPlatform" inputId="over_label" :options="platformModels" class="w-full" />
       <label for="over_label">Platform Type</label>
     </FloatLabel>
+      <FloatLabel class="w-full md:w-72">
+        <DatePicker
+          v-model="dateRange"
+          inputId="date_range"
+          selectionMode="range"
+          dateFormat="mm/dd/yy"
+          showIcon
+          :manualInput="false"
+          class="w-full"
+        />
+        <label for="date_range">Date Range</label>
+      </FloatLabel>
   </div>
 
   <div v-for="platform in visiblePlatforms" :key="platform">

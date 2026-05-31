@@ -20,11 +20,11 @@ Chart.register(...registerables, ChartDataLabels);
 const apiClient = inject('apiClient')
 
 const reportType = ref('Daily');
-const reportTypeOption = ref(["Daily","Weekly","Monthly"]);
+const reportTypeOption = ref(["Daily","Weekly","Monthly","Custom"]);
 const isDaily = computed(() => reportType.value === 'Daily' && dataType.value === 'MTBA');
 const isWeekly = computed(() => reportType.value === 'Weekly' && dataType.value === 'MTBA');
 const isMonthly = computed(() => reportType.value === 'Monthly' && dataType.value === 'MTBA');
-const isDateRange = computed(() => { return (dataType.value === 'MTBA' && Array.isArray(dateRange.value) && dateRange.value.length === 2 && dateRange.value[0] && dateRange.value[1]);});
+const isCustom = computed(() => reportType.value === 'Custom');
 const isMTBF = computed(() => dataType.value === 'MTBF');
 
 const service = new EquipmentMonitoringService(apiClient);
@@ -71,29 +71,17 @@ const mtbfColumnTableMap = ref({})
 const chartMtbfDataMap = ref({});
 const chartMtbfOptionsMap = ref({});
 
-// Vanh
-const dateRangeSectionMap = ref({});
+// Date selector (keep for future use)
+const now = new Date();
+const startOfDay = new Date(now);
+startOfDay.setHours(0, 0, 0, 0);
 
-const totalJamDataMap = ref({});
-const totalJamColumnsMap = ref({});
+const dateRange = ref([startOfDay, now]);
+const fromDate = ref(startOfDay);
+const toDate = ref(now);
 
-const chartRangeDataMap = ref({})
-const chartRangeOptionsMap = ref({})
 
-const dateRange = ref(null)
-const fromDate = ref(null);
-const toDate = ref(null);
-
-const tableTesterColumns = [
-  { label: 'Handler', field: 'Handler' },
-  { label: 'Description', field: 'Description' },
-  { label: 'Jam Time', field: 'Jam Time' },
-  { label: 'Platform', field: 'Platform' },
-  { label: 'Run Time', field: 'Run Time' },
-  { label: 'Start Time', field: 'Start Time' },
-  { label: 'Status', field: 'Status' },
-  { label: 'Stop Time', field: 'Stop Time' }
-];
+// tableTesterColumns removed — Date Range tables disabled
 
 
 // ---- Helper Functions ----
@@ -353,17 +341,8 @@ function lastNMonths(n, refDate = new Date(), includeCurrent = true) {
  * Fetches daily MTBA data for all days from the start of the current week (Monday) to today.
  */
 async function getDayData(platform){
-  const dataDay = []
-  const dayList = getDayFromMondayToToday()
-  for (const day of dayList){
-    const resultData = {Date : day }
-    const fromDate = day + ' 00:00:00'
-    const toDate = day + ' 23:59:59'
-    const result = await get_MTBA_data(fromDate, toDate, platform, 'Get date data')
-    const dataReturn = {...resultData, ...result[0]}
-    dataDay.push(dataReturn);
-  }
-  return dataDay
+  console.warn('getDayData moved to PMmonitoring.vue');
+  return [];
 }
 
 /**
@@ -371,34 +350,16 @@ async function getDayData(platform){
  * Filters out specific exclusion periods (skip lists).
  */
 async function getMonthWeekData(dateDict, platform) {
-  const skip = new Set(["2025-01","2025-02","2025-03","2025-04", "2025-05","2025-06","2025-07","2025-08", "2025-09", "2025-10"]);
-  const skip_2 = new Set(["2025-10", "2025-11", "2025-12"])
-
-  const keys = Object.keys(dateDict).filter(key => {
-    if (skip.has(key)) return false;
-    if (skip_2.has(key) && platform == 'M850A') return false;
-    return true;
-  });
-
-  const promises = keys.map(async key => {
-    const range = dateDict[key]; // ['YYYY-MM-01', 'YYYY-MM-DD']
-    return await getDataDictMTBA(range, key, platform);
-  });
-
-  const results = await Promise.all(promises);
-  return results;
+  console.warn('getMonthWeekData moved to PMmonitoring.vue');
+  return [];
 }
 
 /**
  * Wrapper to fetch MTBA data for a specific date range key.
  */
 async function getDataDictMTBA(dataList, keyData, platform){
-  const resultData = {Date : keyData }
-  const fromDate = dataList[0] + ' 00:00:00'
-  const toDate = dataList[1] + ' 23:59:59'
-  const result = await get_MTBA_data(fromDate, toDate, platform, '')
-  const dataReturn = {...resultData, ...result[0]}
-  return dataReturn
+  console.warn('getDataDictMTBA moved to PMmonitoring.vue');
+  return { Date: keyData };
 }
 
 // ---- Date Formatters ----
@@ -427,6 +388,71 @@ function getCurrentDateTime() {
     const seconds = String(now.getSeconds()).padStart(2, '0');
 
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
+/**
+ * Set `dateRange`, `fromDate`, and `toDate` according to `reportType`.
+ */
+async function setDateRangeForReportType(newType) {
+  const type = newType || reportType.value;
+
+  if (type === 'Daily') {
+    const now = new Date();
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+
+    fromDate.value = start;
+    toDate.value = now;
+    // Use Date objects so DatePicker shows correct date selection
+    dateRange.value = [start, now];
+    return;
+  }
+
+  if (type === 'Weekly') {
+    const weeks = getLast4Weeks();
+    const keys = Object.keys(weeks);
+    if (keys.length) {
+      const first = weeks[keys[0]][0];
+      const last = weeks[keys[keys.length - 1]][1];
+      const start = new Date(first);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(last);
+      end.setHours(23, 59, 59, 999);
+      fromDate.value = start;
+      toDate.value = end;
+      dateRange.value = [start, end];
+      return;
+    }
+  }
+
+  if (type === 'Monthly') {
+    const months = lastNMonths(12);
+    const keys = Object.keys(months);
+    if (keys.length) {
+      const first = months[keys[0]][0];
+      const last = months[keys[keys.length - 1]][1];
+      const start = new Date(first);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(last);
+      end.setHours(23, 59, 59, 999);
+      fromDate.value = start;
+      toDate.value = end;
+      dateRange.value = [start, end];
+      return;
+    }
+  }
+
+  // Custom: keep existing dateRange (user editable)
+  if (type === 'Custom') {
+    // When switching to Custom, default start/end to today
+    const today = new Date();
+    const s = new Date(today); s.setHours(0,0,0,0);
+    const e = new Date(today); e.setHours(23,59,59,999);
+    fromDate.value = s;
+    toDate.value = e;
+    dateRange.value = [s, e];
+    return;
+  }
 }
 
 
@@ -805,12 +831,6 @@ function clearMaps() {
 
   mtbaSummaryTopJamDataMap.value = {};
 
-  // vanh
-  totalJamDataMap.value = {};
-  totalJamColumnsMap.value = {};
-
-  chartRangeDataMap.value = {};
-  chartRangeOptionsMap.value = {};
 }
 
 /**
@@ -890,38 +910,31 @@ watch(currentPlatform, async (newPlatform) => {
 });
 
 watch(reportType, async (newReportType) => {
-  if (['Daily', 'Weekly', 'Monthly'].includes(newReportType)) {
-    dateRange.value = [];
-  }
-
-  reportType.value = newReportType
-  // when changing Platform -> remove old data and fetch data for new platform
+  // When reportType changes, compute & lock/unlock date range accordingly,
+  // then refresh data.
+  await setDateRangeForReportType(newReportType);
   clearMaps();
   await displayAllData();
 });
 
 watch(dateRange, async (newValue) => {
-  const isValid =
-    Array.isArray(newValue) &&
-    newValue.length === 2 &&
-    !!newValue[0] &&
-    !!newValue[1];
+  const isValid = Array.isArray(newValue) && newValue.length === 2 && !!newValue[0] && !!newValue[1];
 
   if (isValid) {
-    reportType.value = null; 
+    const start = new Date(newValue[0]);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(newValue[1]);
+    end.setHours(23, 59, 59, 999);
+
+    fromDate.value = start;
+    toDate.value = end;
+  } else {
+    fromDate.value = null;
+    toDate.value = null;
   }
 
   clearMaps();
-  
-  const start = new Date(newValue?.[0]);
-  start.setHours(0, 0, 0, 0);
-
-  const end = new Date(newValue?.[1]);
-  end.setHours(23, 59, 59, 999);
-
-  fromDate.value = start;
-  toDate.value = end;
-
   await displayAllData();
 })
 
@@ -937,37 +950,7 @@ watch(dataType, async (newDataType) => {
  */
 let displayAllDataRequestId = 0;
 
-async function loadDateRangeSection(platform, from, to, requestId) {
-  try {
-    const dateRangeResult = await get_MTBA_data(from, to, platform, '');
-
-    if (!isLatestRequest(requestId)) return;
-
-    const pivotedData = pivotData(safeArray(dateRangeResult));
-    const columns = getColumnDataTable({ value: pivotedData });
-
-    const chartData = generateChartDataForPlatform(pivotedData, columns, platform);
-    const chartOptions = chartData ? getChartOptions(`${platform} Date Range`, chartData) : null;
-
-    dateRangeSectionMap.value[platform] = {
-      tableData: pivotedData,
-      columns,
-      chartData,
-      chartOptions
-    };
-  } catch (error) {
-    console.error(`loadDateRangeSection error [${platform}]:`, error);
-
-    if (!isLatestRequest(requestId)) return;
-
-    dateRangeSectionMap.value[platform] = {
-      tableData: [],
-      columns: [],
-      chartData: null,
-      chartOptions: null
-    };
-  }
-}
+// loadDateRangeSection removed — Date Range display disabled in this page
 
 async function displayAllData() {
   const requestId = ++displayAllDataRequestId;
@@ -1003,12 +986,7 @@ async function displayAllData() {
       tasks.push(loadMonthlySection(platform, requestId));
     }
         
-    if (isDateRange.value) {
-      tasks.push(loadDateRangeSection(platform, from, to, requestId));
-    }
-
-    // Total jam luôn chạy
-    tasks.push(loadTotalJamSection(platform, from, to, requestId));
+    // Date Range and Total Jam fetching removed for this page
 
     const results = await Promise.allSettled(tasks);
 
@@ -1034,10 +1012,12 @@ function isLatestRequest(requestId) {
 }
 
 function uniqueDateColumns(data = []) {
-  return ['Date', ...new Set(data.map(item => item.Date).filter(Boolean))];
+  console.warn('uniqueDateColumns moved to PMmonitoring.vue');
+  return ['Date'];
 }
 
 function safeArray(data) {
+  console.warn('safeArray moved to PMmonitoring.vue');
   return Array.isArray(data) ? data : [];
 }
 
@@ -1281,29 +1261,7 @@ function formatDateTime(dateString) {
 }
 
 async function loadTotalJamSection(platform, from, to, requestId) {
-  try {
-    const totalJamResult = await service.getTotalJamList(from, to, platform);
-
-    if (!isLatestRequest(requestId)) return;
-
-    const safeTotalJamResult = safeArray(totalJamResult).map(item => ({
-      ...item,
-      'Jam Time': formatDateTime(item['Jam Time']),
-      'Stop Time': formatDateTime(item['Stop Time'])
-    }));
-
-    totalJamDataMap.value[platform] = safeTotalJamResult;
-    totalJamColumnsMap.value[platform] = safeTotalJamResult.length > 0
-      ? Object.keys(safeTotalJamResult[0])
-      : [];
-  } catch (error) {
-    console.error(`loadTotalJamSection error [${platform}]:`, error);
-
-    if (!isLatestRequest(requestId)) return;
-
-    totalJamDataMap.value[platform] = [];
-    totalJamColumnsMap.value[platform] = [];
-  }
+  // loadTotalJamSection removed — Total Jam fetching disabled in this page
 }
 
 /**
@@ -1334,7 +1292,8 @@ onMounted(async () => {
   // Tải options ban đầu và đồng bộ lựa chọn từ localStorage
   await initOptionsOnce();
 
-  // Hiển thị dữ liệu theo lựa chọn hiện tại
+  // Initialize date range according to selected report type, then display data
+  await setDateRangeForReportType();
   await displayAllData();
 
 });
@@ -1368,6 +1327,7 @@ onMounted(async () => {
         dateFormat="mm/dd/yy"
         showIcon
         :manualInput="false"
+        :disabled="!isCustom"
         class="w-full"
       />
       <label for="date_range">Date Range</label>
@@ -1479,40 +1439,6 @@ onMounted(async () => {
         </div>
       </div>
     </div>
-  </section>
-
-  <!-- Date Range -->
-  <section v-show="isDateRange">
-    <template v-for="platform in Object.keys(totalJamDataMap || {})" :key="platform">
-      <div class="card tables-row" v-if="totalJamDataMap[platform]">
-        <div class="card charts-row">
-          <ChartSection
-            v-if="dateRangeSectionMap[platform]?.chartData && dateRangeSectionMap[platform]?.chartOptions"
-            :chartData="dateRangeSectionMap[platform].chartData"
-            :chartOptions="dateRangeSectionMap[platform].chartOptions"
-            class="chart-item"
-          />
-        </div>
-
-        <div class="table-item">
-          <BaseTable
-            :title="`${platform} MTBA Date Range`"
-            :columns="dateRangeSectionMap[platform]?.columns || []"
-            :rowData="dateRangeSectionMap[platform]?.tableData || []"
-            :searching="true"
-          />
-        </div>
-
-        <div class="table-item">
-          <BaseTable
-            :title="`${platform} Total Jam List`"
-            :columns="tableTesterColumns"
-            :rowData="totalJamDataMap[platform] || []"
-            :searching="true"
-          />
-        </div>
-      </div>
-    </template>
   </section>
 
   <!-- MTBF Section -->
