@@ -80,6 +80,9 @@ const dateRange = ref([startOfDay, now]);
 const fromDate = ref(startOfDay);
 const toDate = ref(now);
 
+const machineList = ref([]);
+const selectedMachines = ref([]);
+
 
 // tableTesterColumns removed — Date Range tables disabled
 
@@ -388,6 +391,15 @@ function getCurrentDateTime() {
     const seconds = String(now.getSeconds()).padStart(2, '0');
 
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
+async function getMachineList(data) {
+  const result = await getCommonData(
+    'Get machine list',
+    platform
+  );
+
+  return result.map(item => item.machine_no);
 }
 
 /**
@@ -971,6 +983,9 @@ async function displayAllData() {
       await displayMTBFData();
       return;
     }
+    
+    machineList.value = await getMachineList(currentPlatform.value);
+    selectedMachines.value = [...machineList.value];
 
     const tasks = [];
 
@@ -1315,11 +1330,26 @@ onMounted(async () => {
     </FloatLabel>
 
     <FloatLabel class="w-full md:w-56" variant="on">
+      <MultiSelect
+        v-model="selectedMachines"
+        :options="machineList"
+        inputId="machine_select"
+        display="chip"
+        filter
+        :maxSelectedLabels="3"
+        class="w-full"
+      />
+      <label for="machine_select">
+        Machine
+      </label>
+    </FloatLabel>
+
+    <FloatLabel class="w-full md:w-56" variant="on">
       <Select v-model="reportType" :options="reportTypeOption" inputId="reportType_select" class="w-full" />
       <label for="on_label">Report Type</label>
     </FloatLabel>
 
-    <FloatLabel class="w-full md:w-72" variant="on">
+    <FloatLabel class="w-full md:w-64" variant="on">
       <DatePicker
         v-model="dateRange"
         inputId="date_range"
