@@ -24,7 +24,7 @@ const reportTypeOption = ref(["Daily","Weekly","Monthly","Custom"]);
 const isDaily = computed(() => reportType.value === 'Daily' && dataType.value === 'MTBA');
 const isWeekly = computed(() => reportType.value === 'Weekly' && dataType.value === 'MTBA');
 const isMonthly = computed(() => reportType.value === 'Monthly' && dataType.value === 'MTBA');
-const isCustom = computed(() => reportType.value === 'Custom');
+const isCustom = computed(() => reportType.value === 'Custom' && dataType.value === 'MTBA');
 const isMTBF = computed(() => dataType.value === 'MTBF');
 
 const service = new EquipmentMonitoringService(apiClient);
@@ -71,6 +71,9 @@ const mtbfColumnTableMap = ref({})
 const chartMtbfDataMap = ref({});
 const chartMtbfOptionsMap = ref({});
 
+const totalJamDataMap = ref({});
+const totalJamColumnsMap = ref({});
+
 // Date selector (keep for future use)
 const now = new Date();
 const startOfDay = new Date(now);
@@ -83,9 +86,19 @@ const toDate = ref(now);
 const machineList = ref([]);
 const selectedMachines = ref([]);
 
+const tableTesterColumns = [
+  { label: 'Handler', field: 'Handler' },
+  { label: 'Description', field: 'Description' },
+  { label: 'Jam Time', field: 'Jam Time' },
+  { label: 'Platform', field: 'Platform' },
+  { label: 'Run Time', field: 'Run Time' },
+  { label: 'Start Time', field: 'Start Time' },
+  { label: 'Status', field: 'Status' },
+  { label: 'Stop Time', field: 'Stop Time' }
+];
 
-// tableTesterColumns removed — Date Range tables disabled
-
+let displayAllDataRequestId = 0;
+let isInitializing = true;
 
 // ---- Helper Functions ----
 
@@ -343,26 +356,53 @@ function lastNMonths(n, refDate = new Date(), includeCurrent = true) {
 /**
  * Fetches daily MTBA data for all days from the start of the current week (Monday) to today.
  */
-async function getDayData(platform){
-  console.warn('getDayData moved to PMmonitoring.vue');
-  return [];
+async function getDayData(platform, selectedMachines){
+  const dataDay = []
+  const dayList = getDayFromMondayToToday()
+  for (const day of dayList){
+    const resultData = {Date : day }
+    const fromDate = day + ' 00:00:00'
+    const toDate = day + ' 23:59:59'
+    const result = await get_MTBA_data(fromDate, toDate, platform, 'Get date data', selectedMachines)
+    const dataReturn = {...resultData, ...result[0]}
+    dataDay.push(dataReturn);
+  }
+  return dataDay
 }
 
 /**
  * Fetches MTBA data for a given dictionary of time ranges (Weeks or Months) in parallel.
  * Filters out specific exclusion periods (skip lists).
  */
-async function getMonthWeekData(dateDict, platform) {
-  console.warn('getMonthWeekData moved to PMmonitoring.vue');
-  return [];
+async function getMonthWeekData(dateDict, platform, selectedMachines) {
+  const skip = new Set(["2025-01","2025-02","2025-03","2025-04", "2025-05","2025-06","2025-07","2025-08", "2025-09", "2025-10"]);
+  const skip_2 = new Set(["2025-10", "2025-11", "2025-12"])
+
+  const keys = Object.keys(dateDict).filter(key => {
+    if (skip.has(key)) return false;
+    if (skip_2.has(key) && platform == 'M850A') return false;
+    return true;
+  });
+
+  const promises = keys.map(async key => {
+    const range = dateDict[key]; // ['YYYY-MM-01', 'YYYY-MM-DD']
+    return await getDataDictMTBA(range, key, platform, selectedMachines);
+  });
+
+  const results = await Promise.all(promises);
+  return results;
 }
 
 /**
  * Wrapper to fetch MTBA data for a specific date range key.
  */
-async function getDataDictMTBA(dataList, keyData, platform){
-  console.warn('getDataDictMTBA moved to PMmonitoring.vue');
-  return { Date: keyData };
+async function getDataDictMTBA(dataList, keyData, platform, selectedMachines){
+  const resultData = {Date : keyData }
+  const fromDate = dataList[0] + ' 00:00:00'
+  const toDate = dataList[1] + ' 23:59:59'
+  const result = await get_MTBA_data(fromDate, toDate, platform, '', selectedMachines)
+  const dataReturn = {...resultData, ...result[0]}
+  return dataReturn
 }
 
 // ---- Date Formatters ----
@@ -393,13 +433,18 @@ function getCurrentDateTime() {
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
 
-async function getMachineList(data) {
-  const result = await getCommonData(
-    'Get machine list',
-    platform
-  );
+function formatYMD(d) {
+  const dt = d instanceof Date ? d : new Date(d);
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth() + 1).padStart(2, '0');
+  const day = String(dt.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 
-  return result.map(item => item.machine_no);
+async function getMachineList(data) {
+  if (!Array.isArray(data)) return [];
+
+  return data.map(item => item.Handler);
 }
 
 /**
@@ -488,17 +533,41 @@ function getColumnDataTable(dataTable){
 /**
  * Calls stored procedure to get MTBA data.
  */
-async function get_MTBA_data(fromTime, toTime, platformnm, condition) {
-  let param;
-  param = {
-    "@from_time" : fromTime,
-    "@to_time" : toTime,
-    "@platformnm": platformnm,
-    "@Condition": condition
-  }
-  const resp = await apiClient.callSp("[TestDB]..[USP_PmMonitor_Get_MTBA_Data]", param)
-  return resp[0]['data']
+async function get_MTBA_data(fromTime, toTime, platformnm, condition, flag, selectedMachines) {
 
+  let machineJson = null;
+
+  if (selectedMachines && selectedMachines.length) {
+    machineJson = JSON.stringify(selectedMachines);
+  }
+  console.log(machineJson)
+  let param;
+
+  if (!flag) {
+    param = {
+      "@from_time": fromTime,
+      "@to_time": toTime,
+      "@platformnm": platformnm,
+      "@Condition": condition,
+      "@machines": machineJson  
+    }
+  } else {
+    param = {
+      "@from_time": fromTime,
+      "@to_time": toTime,
+      "@platformnm": platformnm,
+      "@Condition": condition,
+      "@flag": flag,
+      "@machines": machineJson 
+    }
+  }
+
+  const resp = await apiClient.callSp(
+    "[TestDB]..[USP_PmMonitor_Get_MTBA_Data_Test]",
+    param
+  )
+
+  return resp[0]['data']
 }
 
 async function get_MTBF_data(platformnm) {
@@ -529,12 +598,29 @@ async function getCommonData(condition, platformtyp, lineCode = "") {
   return resp[0]['data']
 }
 
+
+async function getTotalJamList(from_date, to_date, platform_type) {
+  let param;
+  param = {
+    "@From_date" : from_date,
+    "@To_date": to_date,
+    "@Platform_type": platform_type
+    }
+  const resp = await apiClient.callSp("[TestDB]..[USP_PmMonitor_Get_Total_JAM_List]", param)
+  
+  return resp[0]['data']
+}
+
 /**
  * Fetches details for the top jams for a specific handler.
  */
-async function getTopJamListMtba(handler) {
+async function getTopJamListMtba(handler, fromStr, toStr) {
   let param;
-  let json_para = `{"handler" : "${handler}"} `
+  let json_para = `{
+    "handler" : "${handler}",
+    "from_time":"${fromStr}",
+    "to_time":  "${toStr}"
+    } `
   param = {
     "@json_para" : json_para,
     }
@@ -812,6 +898,16 @@ function generateChartDataMtbf(labels, dataChart) {
   };
 }
 
+const getFormattedDateTime = (dateStr) => {
+  const d = new Date(dateStr);
+
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+};
+
 // ==== Helpers ====
 function clearMaps() {
 
@@ -842,6 +938,9 @@ function clearMaps() {
   mtbaSummaryTopJamColumnMap.value = {};
 
   mtbaSummaryTopJamDataMap.value = {};
+
+  totalJamDataMap.value = {};
+  totalJamColumnsMap.value = {};
 
 }
 
@@ -887,6 +986,7 @@ async function initOptionsOnce() {
 // Trigger data refresh when filters change.
 
 watch(currentLineCode, async (newLine) => {
+  if (isInitializing) return;
   platformModels.value = []
   localStorage.setItem('currentLineCode', newLine || '');
 
@@ -914,6 +1014,7 @@ watch(currentLineCode, async (newLine) => {
 });
 
 watch(currentPlatform, async (newPlatform) => {
+  if (isInitializing) return;
   localStorage.setItem('currentPlatform', newPlatform || '');
 
   // when changing Platform -> remove old data and fetch data for new platform
@@ -921,36 +1022,91 @@ watch(currentPlatform, async (newPlatform) => {
   await displayAllData();
 });
 
+
+watch(selectedMachines, async (newValue, oldValue) => {
+  if (isInitializing) return;
+
+  clearMaps();
+  await displayAllData();
+});
+
+
 watch(reportType, async (newReportType) => {
+  if (isInitializing) return;
   // When reportType changes, compute & lock/unlock date range accordingly,
   // then refresh data.
+  reportType.value = newReportType
   await setDateRangeForReportType(newReportType);
   clearMaps();
   await displayAllData();
 });
 
-watch(dateRange, async (newValue) => {
-  const isValid = Array.isArray(newValue) && newValue.length === 2 && !!newValue[0] && !!newValue[1];
+// watch(dateRange, async (newValue) => {
+//   const isValid = Array.isArray(newValue) && newValue.length === 2 && !!newValue[0] && !!newValue[1];
 
-  if (isValid) {
-    const start = new Date(newValue[0]);
-    start.setHours(0, 0, 0, 0);
+//   if (isValid) {
+//     const start = new Date(newValue[0]);
+//     start.setHours(0, 0, 0, 0);
 
-    const end = new Date(newValue[1]);
-    end.setHours(23, 59, 59, 999);
+//     const end = new Date(newValue[1]);
+//     end.setHours(23, 59, 59, 999);
 
-    fromDate.value = start;
-    toDate.value = end;
-  } else {
-    fromDate.value = null;
-    toDate.value = null;
-  }
+//     fromDate.value = start;
+//     toDate.value = end;
+//   } else {
+//     fromDate.value = null;
+//     toDate.value = null;
+//   }
 
-  clearMaps();
-  await displayAllData();
-})
+//   clearMaps();
+//   await displayAllData();
+// })
+
+watch(dateRange, async (newRange) => {
+    if (isInitializing) return;
+    clearMaps();
+    let startStr, endStr;
+
+    const isValid =
+      Array.isArray(newRange) &&
+      newRange.length === 2 &&
+      newRange[0] &&
+      newRange[1];
+
+    if (!isValid) {
+      const today = new Date();
+      startStr = formatYMD(today);
+      endStr = formatYMD(today);
+    } else {
+      startStr = formatYMD(newRange[0]);
+      endStr = formatYMD(newRange[1]);
+    }
+
+    const todayStr = formatYMD(new Date());
+    const now = new Date();
+
+    const from = `${startStr} 00:00:00`;
+
+    const to =
+      endStr === todayStr
+        ? `${endStr} ${now.toTimeString().split(" ")[0]}`
+        : `${endStr} 23:59:59`;
+
+    fromDate.value = new Date(startStr);
+    toDate.value = new Date(endStr);
+
+    const platform = currentPlatform.value;
+    if (!platform) return;
+
+    const requestId = ++displayAllDataRequestId;
+
+    await displayAllData();
+  },
+  // { immediate: true }
+);
 
 watch(dataType, async (newDataType) => {
+  if (isInitializing) return;
   clearMaps();
   await displayAllData();
 });
@@ -960,7 +1116,6 @@ watch(dataType, async (newDataType) => {
  * Determines which data to fetch based on `reportType` (Daily/Weekly/Monthly) or `dataType` (MTBA/MTBF).
  * Populates reactive state maps for Tables and Charts.
  */
-let displayAllDataRequestId = 0;
 
 // loadDateRangeSection removed — Date Range display disabled in this page
 
@@ -983,14 +1138,15 @@ async function displayAllData() {
       await displayMTBFData();
       return;
     }
-    
-    machineList.value = await getMachineList(currentPlatform.value);
-    selectedMachines.value = [...machineList.value];
 
     const tasks = [];
 
-    if (daily) {
-      tasks.push(loadDailySection(platform, requestId));
+    if (daily || isCustom.value) {
+      tasks.push(loadDailySection(platform, requestId, {
+        isCustom: isCustom.value,
+        from,
+        to
+      }));
     }
 
     if (weekly) {
@@ -1011,6 +1167,13 @@ async function displayAllData() {
         console.error(`displayAllData task[${index}] failed:`, result.reason);
       }
     });
+    const totalJamResult = await getTotalJamList(from, to, platform);
+
+    if (totalJamResult?.length) {
+      totalJamDataMap.value[platform] = totalJamResult;
+      totalJamColumnsMap.value[platform] = Object.keys(totalJamResult[0]);
+    }
+
   } catch (error) {
     console.error('displayAllData error:', error);
   }
@@ -1027,12 +1190,10 @@ function isLatestRequest(requestId) {
 }
 
 function uniqueDateColumns(data = []) {
-  console.warn('uniqueDateColumns moved to PMmonitoring.vue');
-  return ['Date'];
+  return ['Date', ...new Set(data.map(item => item.Date).filter(Boolean))];
 }
 
 function safeArray(data) {
-  console.warn('safeArray moved to PMmonitoring.vue');
   return Array.isArray(data) ? data : [];
 }
 
@@ -1041,40 +1202,197 @@ function safeArray(data) {
  * Daily Section
  * =========================
  */
-async function loadDailySection(platform, requestId) {
+// async function loadDailySection(platform, requestId, options = {}) {
+//   try {
+//     const isCustomMode = options.isCustom;
+//     const from = options.from;
+//     const to = options.to;
+
+//     let dailyPromise;
+
+//     if (isCustomMode && from && to) {
+//       const fromStr = getFormattedDateTime(from);
+//       const toStr = getFormattedDateTime(to);      
+//       dailyPromise = get_MTBA_data(fromStr, toStr, platform, '');
+//     } else {
+//       dailyPromise = get_MTBA_data(getTodayDateTime(), getCurrentDateTime(), platform, '');
+//     }
+
+//     const [
+//       dailyResult,
+//       dataLast3Month,
+//       dataLast4Week,
+//       dataRecentDays
+//     ] = await Promise.all([
+//       dailyPromise,
+//       getMonthWeekData(lastNMonths(3), platform),
+//       getMonthWeekData(getLast4Weeks(), platform),
+//       getDayData(platform)
+//     ]);
+
+//     if (!isLatestRequest(requestId)) return;
+
+//     // 1) Daily Data Table
+//     const pivotedData = pivotData(safeArray(dailyResult));
+//     const columns = getColumnDataTable({ value: pivotedData });
+
+//     mtbaDataTableMap.value[platform] = pivotedData;
+//     mtbaColumnTableMap.value[platform] = columns;
+
+//     // 2) Daily Chart
+//     const chartData = generateChartDataForPlatform(pivotedData, columns, platform);
+//     if (chartData) {
+//       chartDataMap.value[platform] = chartData;
+//       chartOptionsMap.value[platform] = getChartOptions(platform, chartData);
+//     } else {
+//       chartDataMap.value[platform] = null;
+//       chartOptionsMap.value[platform] = null;
+//     }
+
+//     // 3) Common Data (3 tháng + 4 tuần + recent days)
+//     const combinedCommonData = [
+//       ...safeArray(dataLast3Month),
+//       ...safeArray(dataLast4Week),
+//       ...safeArray(dataRecentDays)
+//     ];
+
+//     mtbaCommonDataTable.value[platform] = pivotWeekMonthData(combinedCommonData);
+//     mtbaCommonColumnTable.value[platform] = uniqueDateColumns(combinedCommonData);
+
+//     const chartCommonData = generateChartMonthDataForPlatform(combinedCommonData, platform);
+//     if (chartCommonData) {
+//       chartCommonDataMap.value[platform] = chartCommonData;
+//       chartCommonOptionsMap.value[platform] = getChartOptions(`${platform} Common`, chartCommonData);
+//     } else {
+//       chartCommonDataMap.value[platform] = null;
+//       chartCommonOptionsMap.value[platform] = null;
+//     }
+
+//     // 4) Top Jam Summary (phụ thuộc daily pivotedData)
+//     const topJamRows = await buildTopJamSummary(pivotedData, requestId);
+
+//     if (!isLatestRequest(requestId)) return;
+
+//     mtbaSummaryTopJamDataMap.value[platform] = topJamRows;
+//     mtbaSummaryTopJamColumnMap.value[platform] = [
+//       'Top 3 Worst M/C',
+//       'No',
+//       'Jam ID',
+//       'Jam Description',
+//       'Qty',
+//       'Comment'
+//     ];
+//   } catch (error) {
+//     console.error(`loadDailySection error [${platform}]:`, error);
+
+//     if (!isLatestRequest(requestId)) return;
+
+//     // Reset data lỗi để UI không giữ data cũ sai
+//     mtbaDataTableMap.value[platform] = [];
+//     mtbaColumnTableMap.value[platform] = [];
+//     chartDataMap.value[platform] = null;
+//     chartOptionsMap.value[platform] = null;
+
+//     mtbaCommonDataTable.value[platform] = [];
+//     mtbaCommonColumnTable.value[platform] = [];
+//     chartCommonDataMap.value[platform] = null;
+//     chartCommonOptionsMap.value[platform] = null;
+
+//     mtbaSummaryTopJamDataMap.value[platform] = [];
+//     mtbaSummaryTopJamColumnMap.value[platform] = [
+//       'Top 3 Worst M/C',
+//       'No',
+//       'Jam ID',
+//       'Jam Description',
+//       'Qty',
+//       'Comment'
+//     ];
+//   }
+// }
+
+async function loadDailySection(platform, requestId, options = {}) {
   try {
+    const isCustomMode = options?.isCustom;
+    const from = options?.from;
+    const to = options?.to;
+    const selectM = selectedMachines.value 
+
+    let fromStr, toStr;
+
+    if (isCustomMode && from && to) {
+      const start = new Date(from);
+      start.setHours(0, 0, 0, 0);
+
+      const end = new Date(to);
+      end.setHours(23, 59, 59, 999);
+
+      fromStr = `${formatYMD(start)} 00:00:00`;
+
+      // Nếu là hôm nay → lấy giờ hiện tại
+      const todayStr = formatYMD(new Date());
+      const endStrOnly = formatYMD(end);
+
+      if (endStrOnly === todayStr) {
+        const nowTime = new Date().toTimeString().split(" ")[0];
+        toStr = `${endStrOnly} ${nowTime}`;
+      } else {
+        toStr = `${endStrOnly} 23:59:59`;
+      }
+    } else {
+      fromStr = getTodayDateTime();
+      toStr = getCurrentDateTime();
+    }
+
+    // === Load data chỉ 1 lần ===
+    const machines = selectedMachines.value?.length
+      ? selectedMachines.value
+      : null;
+
     const [
       dailyResult,
       dataLast3Month,
       dataLast4Week,
       dataRecentDays
     ] = await Promise.all([
-      get_MTBA_data(getTodayDateTime(), getCurrentDateTime(), platform, ''),
+      get_MTBA_data(fromStr, toStr, platform, '', 'detail', machines),
       getMonthWeekData(lastNMonths(3), platform),
       getMonthWeekData(getLast4Weeks(), platform),
       getDayData(platform)
     ]);
 
+    // === Update UI ===
+    machineList.value = await getMachineList(dailyResult);
+
+    // Nếu user chưa chọn gì → auto select all (chỉ 1 lần thôi)
+    if (!selectedMachines.value.length) {
+      selectedMachines.value = [...machineList.value];
+    }
+
+
     if (!isLatestRequest(requestId)) return;
 
-    // 1) Daily Data Table
+    // =========================
+    // 1) TABLE DAILY
+    // =========================
     const pivotedData = pivotData(safeArray(dailyResult));
     const columns = getColumnDataTable({ value: pivotedData });
 
     mtbaDataTableMap.value[platform] = pivotedData;
     mtbaColumnTableMap.value[platform] = columns;
 
-    // 2) Daily Chart
+    // =========================
+    // 2) CHART DAILY
+    // =========================
     const chartData = generateChartDataForPlatform(pivotedData, columns, platform);
-    if (chartData) {
-      chartDataMap.value[platform] = chartData;
-      chartOptionsMap.value[platform] = getChartOptions(platform, chartData);
-    } else {
-      chartDataMap.value[platform] = null;
-      chartOptionsMap.value[platform] = null;
-    }
 
-    // 3) Common Data (3 tháng + 4 tuần + recent days)
+    chartDataMap.value[platform] = chartData || null;
+    chartOptionsMap.value[platform] = chartData
+      ? getChartOptions(platform, chartData)
+      : null;
+
+    // =========================
+    // 3) COMMON DATA
+    // =========================
     const combinedCommonData = [
       ...safeArray(dataLast3Month),
       ...safeArray(dataLast4Week),
@@ -1085,16 +1403,16 @@ async function loadDailySection(platform, requestId) {
     mtbaCommonColumnTable.value[platform] = uniqueDateColumns(combinedCommonData);
 
     const chartCommonData = generateChartMonthDataForPlatform(combinedCommonData, platform);
-    if (chartCommonData) {
-      chartCommonDataMap.value[platform] = chartCommonData;
-      chartCommonOptionsMap.value[platform] = getChartOptions(`${platform} Common`, chartCommonData);
-    } else {
-      chartCommonDataMap.value[platform] = null;
-      chartCommonOptionsMap.value[platform] = null;
-    }
 
-    // 4) Top Jam Summary (phụ thuộc daily pivotedData)
-    const topJamRows = await buildTopJamSummary(pivotedData, requestId);
+    chartCommonDataMap.value[platform] = chartCommonData || null;
+    chartCommonOptionsMap.value[platform] = chartCommonData
+      ? getChartOptions(`${platform} Common`, chartCommonData)
+      : null;
+
+    // =========================
+    // 4) TOP JAM
+    // =========================
+    const topJamRows = await buildTopJamSummary(pivotedData, requestId,fromStr, toStr);
 
     if (!isLatestRequest(requestId)) return;
 
@@ -1107,19 +1425,21 @@ async function loadDailySection(platform, requestId) {
       'Qty',
       'Comment'
     ];
+
   } catch (error) {
     console.error(`loadDailySection error [${platform}]:`, error);
 
     if (!isLatestRequest(requestId)) return;
 
-    // Reset data lỗi để UI không giữ data cũ sai
     mtbaDataTableMap.value[platform] = [];
     mtbaColumnTableMap.value[platform] = [];
+
     chartDataMap.value[platform] = null;
     chartOptionsMap.value[platform] = null;
 
     mtbaCommonDataTable.value[platform] = [];
     mtbaCommonColumnTable.value[platform] = [];
+
     chartCommonDataMap.value[platform] = null;
     chartCommonOptionsMap.value[platform] = null;
 
@@ -1135,7 +1455,8 @@ async function loadDailySection(platform, requestId) {
   }
 }
 
-async function buildTopJamSummary(dataArray, requestId) {
+
+async function buildTopJamSummary(dataArray, requestId,fromStr, toStr) {
   try {
     const safeDataArray = safeArray(dataArray);
     if (!safeDataArray.length) return [];
@@ -1152,9 +1473,9 @@ async function buildTopJamSummary(dataArray, requestId) {
 
     // Gọi song song thay vì await từng handler
     const detailResults = await Promise.all(
-      topEntries.map(([handler]) => getTopJamListMtba(handler))
+      topEntries.map(([handler]) => getTopJamListMtba(handler,fromStr, toStr))
     );
-
+  
     if (!isLatestRequest(requestId)) return [];
 
     return topEntries.map(([handler], index) => {
@@ -1237,7 +1558,7 @@ async function loadMonthlySection(platform, requestId) {
     const chartMonthData = generateChartMonthDataForPlatform(safeMonthlyData, platform);
     if (chartMonthData) {
       chartMonthDataMap.value[platform] = chartMonthData;
-      chartMonthOptionsMap.value[platform] = getChartOptions(`${platform} Monthly`, chartMonthData);
+      chartMonthOptionsMap.value[platform] = getChartOptions(platform + " Monthly", chartMonthData);
     } else {
       chartMonthDataMap.value[platform] = null;
       chartMonthOptionsMap.value[platform] = null;
@@ -1259,21 +1580,6 @@ async function loadMonthlySection(platform, requestId) {
  * Total Jam Section
  * =========================
  */
-function formatDateTime(dateString) {
-  if (!dateString) return '';
-
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return dateString;
-
-  const hh = String(date.getHours()).padStart(2, '0');
-  const mm = String(date.getMinutes()).padStart(2, '0');
-  const ss = String(date.getSeconds()).padStart(2, '0');
-  const dd = String(date.getDate()).padStart(2, '0');
-  const MM = String(date.getMonth() + 1).padStart(2, '0');
-  const yyyy = date.getFullYear();
-
-  return `${hh}:${mm}:${ss} ${dd}/${MM}/${yyyy}`;
-}
 
 async function loadTotalJamSection(platform, from, to, requestId) {
   // loadTotalJamSection removed — Total Jam fetching disabled in this page
@@ -1307,10 +1613,11 @@ onMounted(async () => {
   // Tải options ban đầu và đồng bộ lựa chọn từ localStorage
   await initOptionsOnce();
 
+  isInitializing = false;
+
   // Initialize date range according to selected report type, then display data
   await setDateRangeForReportType();
-  await displayAllData();
-
+  // await displayAllData();
 });
 
 </script>
@@ -1371,22 +1678,26 @@ onMounted(async () => {
   </div>
 
   <!-- Daily -->
-  <section v-show="isDaily">
+  <section v-show="isDaily || isCustom">
     <div v-for="platform in visiblePlatforms" :key="platform">
       <div v-if="true">
-        <h2>{{ platform }} Daily Report</h2>
+                  
+        <h2>
+          {{ platform }} 
+          {{ reportType === 'Custom' ? 'Custom Range Report' : 'Daily Report' }}
+        </h2>
 
         <div class="card charts-row">
           <ChartSection
             v-if="chartDataMap[platform] && chartOptionsMap[platform]"
-            :chartData="chartDataMap[platform]"
-            :chartOptions="chartOptionsMap[platform]"
+            :chartData="chartDataMap[platform] || []"
+            :chartOptions="chartOptionsMap[platform] || []"
             class="chart-item"
           />
           <ChartSection
             v-if="chartCommonDataMap[platform] && chartCommonOptionsMap[platform]"
-            :chartData="chartCommonDataMap[platform]"
-            :chartOptions="chartCommonOptionsMap[platform]"
+            :chartData="chartCommonDataMap[platform] || []"
+            :chartOptions="chartCommonOptionsMap[platform] || []"
             class="chart-item"
           />
         </div>
@@ -1395,15 +1706,15 @@ onMounted(async () => {
           <div class="card table-item">
             <TableSection
               :title="`${platform} MTBA Data Daily`"
-              :columns="mtbaColumnTableMap[platform]"
-              :rowData="mtbaDataTableMap[platform]"
+              :columns="mtbaColumnTableMap[platform] || []"
+              :rowData="mtbaDataTableMap[platform] || []"
             />
           </div>
           <div class="card table-item">
             <TableSection
               :title="`${platform} MTBA Common Data`"
-              :columns="mtbaCommonColumnTable[platform]"
-              :rowData="mtbaCommonDataTable[platform]"
+              :columns="mtbaCommonColumnTable[platform] || []"
+              :rowData="mtbaCommonDataTable[platform] || []"
             />
           </div>
         </div>
@@ -1412,8 +1723,19 @@ onMounted(async () => {
           <TopJamTable
             v-if="mtbaSummaryTopJamDataMap[platform]"
             :title="`${platform} Top 3 Worst M/C Daily`"
-            :topJamSummary="mtbaSummaryTopJamDataMap[platform]"
+            :topJamSummary="mtbaSummaryTopJamDataMap[platform] || []"
           />
+        </div>
+
+        <div class="card tables-row" v-if="totalJamDataMap[platform]?.length">
+          <div class="table-item">
+            <BaseTable
+              :title="`${platform} Total Jam List`"
+              :columns="tableTesterColumns"
+              :rowData="totalJamDataMap[platform] || []"
+              :searching="true"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -1427,8 +1749,8 @@ onMounted(async () => {
       <div class="card charts-row">
         <ChartSection
           v-if="chartWeekDataMap[platform] && chartWeekOptionsMap[platform]"
-          :chartData="chartWeekDataMap[platform]"
-          :chartOptions="chartWeekOptionsMap[platform]"
+          :chartData="chartWeekDataMap[platform] || []"
+          :chartOptions="chartWeekOptionsMap[platform] || []"
           class="chart-item"
         />
       </div>
@@ -1437,8 +1759,8 @@ onMounted(async () => {
         <div class="card table-item">
           <TableSection
             :title="`${platform} MTBA Data Weekly`"
-            :columns="mtbaWeeklyColumnTableMap[platform]"
-            :rowData="mtbaDataWeeklyTableMap[platform]"
+            :columns="mtbaWeeklyColumnTableMap[platform] || []"
+            :rowData="mtbaDataWeeklyTableMap[platform] || []"
           />
         </div>
       </div>
@@ -1498,7 +1820,6 @@ onMounted(async () => {
       </div>
     </div>
   </section>
-  
 </template>
 
 

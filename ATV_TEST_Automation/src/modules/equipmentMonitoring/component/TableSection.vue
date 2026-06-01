@@ -1,43 +1,50 @@
 <!-- TableSection.vue -->
 <script setup>
-const props = defineProps({
+  const props = defineProps({
   title: {
     type: String,
     default: "",
   },
   columns: {
     type: Array,
+    required: true,
+    // Example: [{ label: "Date", field: "date" }, { label: "Lot", field: "lot" }]
   },
   rowData: {
     type: Array,
+    required: true,
   },
   tableHeight: {
     type: String,
-    default: "450px",
+    default: '450px'
   },
   selection: {
     type: Boolean,
-    default: false,
-  },
+    default: false
+  }
+
 });
+
 </script>
+
 
 <template>
   <div>
-    <div>
+    <div >
       <div class="table-title">{{ props.title }}</div>
       <div class="table-container">
         <table>
           <thead>
             <tr>
-              <th v-for="col in props.columns" :key="col">
+              <th v-for="(col, index) in props.columns" :key="index">
                 {{ col }}
               </th>
             </tr>
           </thead>
+
           <tbody>
-            <tr v-for="(row, rowIndex) in props.rowData" :key="rowIndex">
-              <td v-for="col in props.columns" :key="col">
+            <tr v-for="(row, index) in props.rowData" :key="index">
+              <td v-for="(col, indexColumn) in props.columns" :key="indexColumn">
                 {{ row[col] }}
               </td>
             </tr>

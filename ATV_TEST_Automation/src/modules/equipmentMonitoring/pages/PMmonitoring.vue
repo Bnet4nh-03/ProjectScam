@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted , inject, watch, computed } from 'vue'
 import DatePicker from 'primevue/datepicker';
 import TableSection from '@/modules/equipmentMonitoring/component/TableSection.vue'
+import BaseTable from '@/modules/holdLotManagement/component/BaseTable.vue';
 import ChartSection from '@/modules/equipmentMonitoring/component/ChartSection.vue'
 import TopJamTable from '@/modules/equipmentMonitoring/component/TopJamTable.vue'
 import { Chart, registerables } from 'chart.js';
@@ -34,6 +35,17 @@ const toDate = ref(null);
 
 // Date range / helper maps moved from MTBArecord.vue
 const dateRangeSectionMap = ref({});
+
+const tableTesterColumns = [
+  { label: 'Handler', field: 'Handler' },
+  { label: 'Description', field: 'Description' },
+  { label: 'Jam Time', field: 'Jam Time' },
+  { label: 'Platform', field: 'Platform' },
+  { label: 'Run Time', field: 'Run Time' },
+  { label: 'Start Time', field: 'Start Time' },
+  { label: 'Status', field: 'Status' },
+  { label: 'Stop Time', field: 'Stop Time' }
+];
 
 // Request id for concurrency control when loading date-range sections
 let displayAllDataRequestId = 0;
@@ -115,15 +127,38 @@ async function loadDateRangeSection(platform, from, to, requestId) {
 
     if (!isLatestRequest(requestId)) return;
 
-    const pivotedData = pivotData(safeArray(dateRangeResult));
+    const rawData = safeArray(dateRangeResult);
+
+    if (!rawData.length) {
+      dateRangeSectionMap.value[platform] = {
+        tableData: [],
+        columns: [],
+        chartData: null,
+        chartOptions: null
+      };
+      return;
+    }
+
+    const metrics = ['Handler', 'Run Time', 'JAM Count', 'MTBA'];
+
+    const pivotedData = pivotData(rawData, metrics);
+
     const columns = getColumnDataTable({ value: pivotedData });
 
+    const keys =
+      pivotedData.length > 0
+        ? Object.keys(pivotedData[0]).filter(k => k !== 'Machine')
+        : [];
+
     const chartData = generateChartDataForPlatform(
-      pivotedData.map(r => r.Machine ? Object.keys(r).filter(k => k !== 'Machine') : [] ).flat(),
-      pivotedData.length ? pivotedData[2] : [],
+      keys,
+      pivotedData[0] || {},
       platform
     );
-    const chartOptions = chartData ? getChartOptions(`${platform} Date Range`) : null;
+
+    const chartOptions = chartData
+      ? getChartOptions(`${platform} Date Range`)
+      : null;
 
     dateRangeSectionMap.value[platform] = {
       tableData: pivotedData,
@@ -144,6 +179,7 @@ async function loadDateRangeSection(platform, from, to, requestId) {
     };
   }
 }
+
 
 function formatDateTime(dateString) {
   if (!dateString) return '';
@@ -184,32 +220,6 @@ const lineCode = ref([])
 const platformModels = ref([])
 const currentLineCode = ref(localStorage.getItem('currentLineCode') || '');
 const currentPlatform = ref(localStorage.getItem('currentPlatform') || '');
-
-function getTodayDate() {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  const day = String(today.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function getTodayDateTime(){
-  const today = getTodayDate();
-  return `${today} 00:00:00`;   //return '2025-11-04 00:00:00'
-}
-
-function getCurrentDateTime() {
-    const now = new Date();
-
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    const seconds = String(now.getSeconds()).padStart(2, '0');
-
-    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-  }
 
 function getColumnDataTable(dataTable){
   if (!Array.isArray(dataTable.value) || dataTable.value.length === 0) {
@@ -255,11 +265,11 @@ async function getCommonData(condition, platformtyp, line_code = "") {
   return resp[0]['data']
 }
 
-async function getTopJamListMtba(handler) {
+async function getTopJamListMtba(handler,fromDate,toDate) {
   let param;
   let json_para = `{"handler" : "${handler}"} `
   param = {
-    "@json_para" : json_para,
+    "@json_para" : json_para
     }
   const resp = await apiClient.callSp("[TestDB]..[USP_PmMonitor_Get_Top_JAM_Error]", param)
   return resp[0]['data']
@@ -353,7 +363,7 @@ function getChartOptions(text) {
 
 function generateChartDataForPlatform(labels, dataChart, platform) {
 
-  if (!labels || !dataChart === 0 ) return null;
+  if (!labels?.length || !dataChart?.length) return null;
 
   let target;
   switch (platform) {
@@ -362,8 +372,6 @@ function generateChartDataForPlatform(labels, dataChart, platform) {
       break;
     case 'M6243':
     case 'M850A':
-      target = 300;
-      break;
     case 'TWSL301N':
       target = 300;
       break;
@@ -372,44 +380,38 @@ function generateChartDataForPlatform(labels, dataChart, platform) {
       target = 250;
       break;
     default:
-      //target = 200;
+      target = 200;
   }
-  const targetData = new Array(labels.length).fill(target);
-  const barColors = dataChart.map(value => value < target ? '#df7132' : '#92d050');
-  const bar2Color = barColors[0] === '#92d050' ? '#df7132' : '#92d050';
 
-  const datasets = [
-    {
-      type: 'line',
-      label: 'Target',
-      data: targetData,
-      borderColor: '#156082',
-      backgroundColor: '#156082',
-      fill: false,
-      tension: 0.8,
-      pointStyle: 'line'
-    },
-    {
-      type: 'bar',
-      label: 'MTBA',
-      data: dataChart,
-      backgroundColor: barColors,
-      pointStyle: 'rect',
-      barThickness: 30
-    },
-    {
-      type: 'bar',
-      label: 'MTBA',
-      backgroundColor: bar2Color,
-      pointStyle: 'rect',
-    }
-  ];
+  const targetData = new Array(labels.length).fill(target);
+
+  const barColors = dataChart.map(value =>
+    value < target ? '#df7132' : '#92d050'
+  );
 
   return {
     labels,
-    datasets
+    datasets: [
+      {
+        type: 'line',
+        label: 'Target',
+        data: targetData,
+        borderColor: '#156082',
+        backgroundColor: '#156082',
+        fill: false,
+        tension: 0.8,
+      },
+      {
+        type: 'bar',
+        label: 'MTBA',
+        data: dataChart,
+        backgroundColor: barColors,
+        barThickness: 30
+      }
+    ]
   };
 }
+
 
 function generateChartDataMtbf(labels, dataChart) {
 
@@ -529,40 +531,60 @@ function formatYMD(d) {
 }
 
 watch(dateRange, async (newRange) => {
-  const isValid = Array.isArray(newRange) && newRange.length === 2 && newRange[0] && newRange[1];
-  if (!isValid) return;
+    clearMaps();
+    let startStr, endStr;
 
-  const startStr = formatYMD(newRange[0]);
-  const endStr = formatYMD(newRange[1]);
+    const isValid =
+      Array.isArray(newRange) &&
+      newRange.length === 2 &&
+      newRange[0] &&
+      newRange[1];
 
-  const from = `${startStr} 00:00:00`;
-  const to = `${endStr} 23:59:59`;
+    if (!isValid) {
+      // 👉 fallback về hôm nay
+      const today = new Date();
+      startStr = formatYMD(today);
+      endStr = formatYMD(today);
+    } else {
+      startStr = formatYMD(newRange[0]);
+      endStr = formatYMD(newRange[1]);
+    }
 
-  fromDate.value = new Date(startStr);
-  toDate.value = new Date(endStr);
+    const todayStr = formatYMD(new Date());
+    const now = new Date();
 
-  const platform = currentPlatform.value;
-  if (!platform) return;
+    const from = `${startStr} 00:00:00`;
 
-  const requestId = ++displayAllDataRequestId;
-  await Promise.all([
-    loadDateRangeSection(platform, from, to, requestId),
-    loadTotalJamSection(platform, from, to, requestId)
-  ]);
-});
+    const to =
+      endStr === todayStr
+        ? `${endStr} ${now.toTimeString().split(" ")[0]}`
+        : `${endStr} 23:59:59`;
+
+    fromDate.value = new Date(startStr);
+    toDate.value = new Date(endStr);
+
+    const platform = currentPlatform.value;
+    if (!platform) return;
+
+    const requestId = ++displayAllDataRequestId;
+
+
+    await displayAllData();
+  },
+  { immediate: true }
+);
 
 // ==== CHỈ fetch data cho platform đã chọn ====
 async function displayAllData() {
   const platform = currentPlatform.value;
   if (!platform) return;
-
-  try {
     // ===== CALL APIs song song =====
     const [mtbaResult, mtbfResult, totalJamResult] = await Promise.all([
-      get_MTBA_data(getTodayDateTime(), getCurrentDateTime(), platform),
+      get_MTBA_data(fromDate.value, toDate.value, platform),
       get_MTBF_data(platform),
-      getTotalJamList(getTodayDate(), getTodayDate(), platform)
+      getTotalJamList(fromDate.value, toDate.value, platform)
     ]);
+    console.log(totalJamResult)
 
     // ===== MTBA =====
     const mtbaMetrics = ['Run Time', 'JAM Count', 'MTBA'];
@@ -611,7 +633,7 @@ async function displayAllData() {
         .map(([handler]) => handler);
 
       const jamDetails = await Promise.all(
-        topHandlers.map(handler => getTopJamListMtba(handler))
+        topHandlers.map(handler => getTopJamListMtba(handler,fromDate.value,toDate.value))
       );
 
       topJamRows = topHandlers.map((handler, index) => ({
@@ -633,9 +655,10 @@ async function displayAllData() {
       totalJamColumnsMap.value[platform] = Object.keys(totalJamResult[0]);
     }
 
-  } catch (error) {
-    console.error('displayAllData error:', error);
-  }
+    // await Promise.all([
+    //   loadDateRangeSection(platform, from, to, requestId),
+    //   loadTotalJamSection(platform, from, to, requestId),
+    // ]);
 }
 
 onMounted(async () => {
@@ -733,11 +756,21 @@ onMounted(async () => {
       </div>
       
       <div class="card tables-row" v-if="totalJamDataMap[platform]">
+        <!--
         <div class="table-item">
           <TableSection
             :title="`${platform} Total Jam List`"
             :columns="totalJamColumnsMap[platform]"
             :rowData="totalJamDataMap[platform]"
+          />
+        </div>
+        -->
+        <div class="table-item">
+          <BaseTable
+            :title="`${platform} Total Jam List`"
+            :columns="tableTesterColumns"
+            :rowData="totalJamDataMap[platform] || []"
+            :searching="true"
           />
         </div>
       </div>
