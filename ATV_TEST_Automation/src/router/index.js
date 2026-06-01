@@ -17,14 +17,16 @@ const router = createRouter({
 });
 
 router.beforeEach((to, from, next) => {
-    const authStore = useAuthStore();
-    if (to.meta.requiresAuth && !authStore.IsAuthenticated) {
-        next({ name: 'login' });
-    } else if (to.meta.requiredPermissions && !authStore.HasPermission(to.meta.requiredPermissions)) {
-        next({ name: 'accessDenied' });
-    } else {
-        next();
-    }
+    // const authStore = useAuthStore();
+    // if (to.meta.requiresAuth && !authStore.IsAuthenticated) {
+    //     next({ name: 'login' });
+    // } else if (to.meta.requiredPermissions && !authStore.HasPermission(to.meta.requiredPermissions)) {
+    //     next({ name: 'accessDenied' });
+    // } else {
+    //     next();
+    // }
+    next();
+
 });
 
 

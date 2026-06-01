@@ -85,6 +85,7 @@ const toDate = ref(now);
 
 const machineList = ref([]);
 const selectedMachines = ref([]);
+const machineInitialized = ref(false);
 
 const tableTesterColumns = [
   { label: 'Handler', field: 'Handler' },
@@ -356,18 +357,22 @@ function lastNMonths(n, refDate = new Date(), includeCurrent = true) {
 /**
  * Fetches daily MTBA data for all days from the start of the current week (Monday) to today.
  */
-async function getDayData(platform, selectedMachines){
-  const dataDay = []
-  const dayList = getDayFromMondayToToday()
-  for (const day of dayList){
-    const resultData = {Date : day }
-    const fromDate = day + ' 00:00:00'
-    const toDate = day + ' 23:59:59'
-    const result = await get_MTBA_data(fromDate, toDate, platform, 'Get date data', selectedMachines)
-    const dataReturn = {...resultData, ...result[0]}
-    dataDay.push(dataReturn);
-  }
-  return dataDay
+async function getDayData(platform, selectedMachines) {
+  const dayList = getDayFromMondayToToday();
+
+  const dataDay = await Promise.all(
+    dayList.map(async (day) => {
+      const fromDate = `${day} 00:00:00`;
+      const toDate = `${day} 23:59:59`;
+
+      const result = await get_MTBA_data(fromDate, toDate, platform, 'Get date data', selectedMachines
+      );
+
+      return { Date: day, ...result[0]};
+    })
+  );
+
+  return dataDay;
 }
 
 /**
@@ -1133,7 +1138,6 @@ async function displayAllData() {
   if (!platform) return;
 
   try {
-    // Nếu là MTBF thì xử lý riêng
     if (selectedDataType === 'MTBF') {
       await displayMTBFData();
       return;
@@ -1142,11 +1146,13 @@ async function displayAllData() {
     const tasks = [];
 
     if (daily || isCustom.value) {
-      tasks.push(loadDailySection(platform, requestId, {
-        isCustom: isCustom.value,
-        from,
-        to
-      }));
+      tasks.push(
+        loadDailySection(platform, requestId, {
+          isCustom: isCustom.value,
+          from,
+          to
+        })
+      );
     }
 
     if (weekly) {
@@ -1156,18 +1162,21 @@ async function displayAllData() {
     if (monthly) {
       tasks.push(loadMonthlySection(platform, requestId));
     }
-        
-    // Date Range and Total Jam fetching removed for this page
+
+    const totalJamPromise = getTotalJamList(from, to, platform);
 
     const results = await Promise.allSettled(tasks);
 
-    // Log lỗi từng phần để không làm hỏng toàn bộ màn hình
     results.forEach((result, index) => {
       if (result.status === 'rejected') {
-        console.error(`displayAllData task[${index}] failed:`, result.reason);
+        console.error(
+          `displayAllData task[${index}] failed:`,
+          result.reason
+        );
       }
     });
-    const totalJamResult = await getTotalJamList(from, to, platform);
+
+    const totalJamResult = await totalJamPromise;
 
     if (totalJamResult?.length) {
       totalJamDataMap.value[platform] = totalJamResult;
@@ -1344,9 +1353,10 @@ async function loadDailySection(platform, requestId, options = {}) {
     }
 
     // === Load data chỉ 1 lần ===
-    const machines = selectedMachines.value?.length
-      ? selectedMachines.value
-      : null;
+    const machines =
+      selectedMachines.value.length > 0
+        ? selectedMachines.value
+        : machineList.value;
 
     const [
       dailyResult,
@@ -1363,9 +1373,13 @@ async function loadDailySection(platform, requestId, options = {}) {
     // === Update UI ===
     machineList.value = await getMachineList(dailyResult);
 
-    // Nếu user chưa chọn gì → auto select all (chỉ 1 lần thôi)
-    if (!selectedMachines.value.length) {
+    // Chỉ auto select all ở lần load đầu tiên
+    if (
+      !machineInitialized.value &&
+      machineList.value.length > 0
+    ) {
       selectedMachines.value = [...machineList.value];
+      machineInitialized.value = true;
     }
 
 
